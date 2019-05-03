@@ -226,7 +226,7 @@ awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; if (a < b) {print "PART5"} else {prin
 awk 'BEGIN {OFS = "\t"} {a = $5; {print a}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.chr
 awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d-1} else {print c-1}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.start
 awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d} else {print c}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.end
-awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {a = $10 ; {print a"|S"s"|L"l}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.readname
+awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {a = $11 ; {print a"|S"s"|L"l}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.readname
 awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.score
 awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.strand
 
