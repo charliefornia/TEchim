@@ -14,38 +14,49 @@
 ################################################################################
 
 # set parameters
-working_directory=/Users/koalcan/Documents/2019MAY_TEscoex_longRNA/TEST
-INPUT_FASTQ1=test_1.fastq.gz
-INPUT_FASTQ2=test_2.fastq.gz
-SAMPLENAME=test
-ncores=20
+wd=~							# working directory
+FASTQ1=READS_1.fastq.gz			# input FASTQ file 1
+FASTQ2=READS_2.fastq.gz			# input FASTQ file 2
+SNa=EXP							# sample name	
+SNo=1							# sample number
+LNo=1							# sequencing lane number
+nc=20							# number of cores
 refgenome_dmel=/Users/koalcan/Documents/REF_2019FEB/dmel625_v03/
 dmel_noTEs=/Users/koalcan/Documents/REF_2019FEB/dmel625_v04/dmel625_v04_noTEs.fa
 dmel_onlyTEs=/Users/koalcan/Documents/REF_2019FEB/dmel625_v04/dmel625_v04_onlyTEs.fa
 
 # change to wd
-cd $working_directory
+cd $wd
 
-echo "starting"
-date
+mkdir $SNa"_"$SNo"_"$LNo
+cd $SNa"_"$SNo"_"$LNo
+
+echo "TEchim v 0.1.1 run starting at:" > $SNa"_"$SNo"_"$LNo".log"
+date >> $SNa"_"$SNo"_"$LNo".log"
+echo "input fastq_1:" "$FASTQ1" >> $SNa"_"$SNo"_"$LNo".log"
+echo "input fastq_2:" "$FASTQ2" >> $SNa"_"$SNo"_"$LNo".log"
+echo "sample name:" "$SNa" >> $SNa"_"$SNo"_"$LNo".log"
+echo "sample number:" "$SNo" >> $SNa"_"$SNo"_"$LNo".log"
+echo "sequencing lane number:" "$SNo" >> $SNa"_"$SNo"_"$LNo".log"
+
 
 # merge reads
-flash $INPUT_FASTQ1 $INPUT_FASTQ2 \
+flash $FASTQ1 $FASTQ2 \
 	-z \
 	-x 0.15 \
 	-M 170 \
-	-o $SAMPLENAME$"_out1" \
-	-t $ncores
+	-o $SNa"_"$SNo"_"$LNo$"_out1" \
+	-t $nc
 
-echo "done with merge"
-date
+echo "--------------------------------" >> $SNa"_"$SNo"_"$LNo".log"
+echo " --> done with merging at ... $(date)" >> $SNa"_"$SNo"_"$LNo".log"
 
 ################################################################################
 
 # concatenate reads that were successfully merged with unmerged file _1.fastq
 # the unmerged file _1.fastq will contain reads that are longer than 119nt,
 # which can also be used to generate in-silico paired-end reads
-cat $SAMPLENAME$"_out1.extendedFrags.fastq.gz" $SAMPLENAME$"_out1.notCombined_1.fastq.gz" > $SAMPLENAME$"_out1.combined.fastq.gz"
+cat $SNa"_"$SNo"_"$LNo$"_out1.extendedFrags.fastq.gz" $SNa"_"$SNo"_"$LNo$"_out1.notCombined_1.fastq.gz" > $SNa"_"$SNo"_"$LNo$"_out1.combined.fastq.gz"
 
 # for the following awk commands, the reads will be filtered. only reads
 # containing at least 119nt are kept. this is to avoid overlap when taking 60nt
@@ -54,16 +65,18 @@ cat $SAMPLENAME$"_out1.extendedFrags.fastq.gz" $SAMPLENAME$"_out1.notCombined_1.
 # split up fasta into 4 separate files, one for each line. (a) header;
 # (b) sequence; (c) +; (d) quality score.
 # reads used here: merged (_m) _1.fastq.gz (_1) -> _m1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print a}}' <(gzip -dc $SAMPLENAME$"_out1.combined.fastq.gz") > a_m1.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print b}}' <(gzip -dc $SAMPLENAME$"_out1.combined.fastq.gz") > b_m1.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print c}}' <(gzip -dc $SAMPLENAME$"_out1.combined.fastq.gz") > c_m1.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print d}}' <(gzip -dc $SAMPLENAME$"_out1.combined.fastq.gz") > d_m1.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print a}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.combined.fastq.gz") > a_m1.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print b}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.combined.fastq.gz") > b_m1.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print c}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.combined.fastq.gz") > c_m1.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print d}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.combined.fastq.gz") > d_m1.1
 
 # reads used here: _2.fastq.gz reads (2)
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print a}}' <(gzip -dc $SAMPLENAME$"_out1.notCombined_2.fastq.gz") > a_2.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print b}}' <(gzip -dc $SAMPLENAME$"_out1.notCombined_2.fastq.gz") > b_2.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print c}}' <(gzip -dc $SAMPLENAME$"_out1.notCombined_2.fastq.gz") > c_2.1
-awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print d}}' <(gzip -dc $SAMPLENAME$"_out1.notCombined_2.fastq.gz") > d_2.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print a}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.notCombined_2.fastq.gz") > a_2.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print b}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.notCombined_2.fastq.gz") > b_2.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print c}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.notCombined_2.fastq.gz") > c_2.1
+awk 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= 120) {print d}}' <(gzip -dc $SNa"_"$SNo"_"$LNo$"_out1.notCombined_2.fastq.gz") > d_2.1 &&
+
+rm $SNa"_"$SNo"_"$LNo$"_out1"*
 
 ################################################################################
 
@@ -83,9 +96,9 @@ rev b_m1.1 | sed -E 's/(.{60}).*/\1/' | grep '^[ATCGN]' /dev/stdin | tr ATCGN TA
 rev d_m1.1 | sed -E 's/(.{60}).*/\1/' > d_m1.3
 
 # combine in-silico components for NEW_1.fasta file
-paste -d'\n' a_m1.2 b_m1.2 c_m1.1 d_m1.2 > $SAMPLENAME$"_out3_1.fasta"
+paste -d'\n' a_m1.2 b_m1.2 c_m1.1 d_m1.2 > $SNa"_"$SNo"_"$LNo$"_out3_1.fasta"
 # combine in-silico components for NEW_2.fasta file
-paste -d'\n' a_m1.2 b_m1.3 c_m1.1 d_m1.3 > $SAMPLENAME$"_out3_2.fasta"
+paste -d'\n' a_m1.2 b_m1.3 c_m1.1 d_m1.3 > $SNa"_"$SNo"_"$LNo$"_out3_2.fasta"
 
 ################################################################################
 
@@ -105,9 +118,9 @@ rev b_2.1 | sed -E 's/(.{60}).*/\1/' | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAG
 rev d_2.1 | sed -E 's/(.{60}).*/\1/' > d_2.3
 
 # combine in-silico components and add to NEW_1.fasta file
-paste -d'\n' a_2.2 b_2.3 c_2.1 d_2.3 >> $SAMPLENAME$"_out3_1.fasta"
+paste -d'\n' a_2.2 b_2.3 c_2.1 d_2.3 >> $SNa"_"$SNo"_"$LNo$"_out3_1.fasta"
 # combine in-silico components and add to NEW_2.fasta file
-paste -d'\n' a_2.2 b_2.2 c_2.1 d_2.2 >> $SAMPLENAME$"_out3_2.fasta"
+paste -d'\n' a_2.2 b_2.2 c_2.1 d_2.2 >> $SNa"_"$SNo"_"$LNo$"_out3_2.fasta"
 
 ################################################################################
 
@@ -127,46 +140,48 @@ rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m1.4
 cat b_m1.4 b_2.1 > b_m12.1
 
 # create look-up table and remove "@" at the beginning of the readname
-paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SAMPLENAME$"_LOOKUP.tsv"
+paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_"$SNo"_"$LNo$"_LOOKUP.tsv" &&
 
 rm a_*
 rm b_*
 rm c_*
 rm d_*
 
-echo "done with cropping"
-date
+echo " --> done with cropping at ... $(date)" >> $SNa"_"$SNo"_"$LNo".log"
 
 ################################################################################
 
 # run STAR in chimera-mode
-STAR --runThreadN $ncores \
+STAR --runThreadN $nc \
 	--genomeDir $refgenome_dmel \
-	--readFilesIn $SAMPLENAME$"_out3_1.fasta" $SAMPLENAME$"_out3_2.fasta" \
+	--readFilesIn $SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $SNa"_"$SNo"_"$LNo$"_out3_2.fasta" \
 	--chimSegmentMin 20 \
 	--chimOutType WithinBAM \
 	--outSAMtype BAM SortedByCoordinate \
-	--outFileNamePrefix $SAMPLENAME$"_out4_" \
-	&&
+	--outFileNamePrefix $SNa"_"$SNo"_"$LNo$"_out4_"
 	
 # extract only hits that cross TE-GENE breakpoints. the awk commands remove
 # (1) TE-TE reads and (2)&(3) reads that span the TE and it's LTR
-samtools view $SAMPLENAME$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SAMPLENAME$"_out5_TExGENES.sam"
+samtools view $SNa"_"$SNo"_"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SNa"_"$SNo"_"$LNo$"_out5_TExGENES.sam" &&
 
-echo "done with mapping"
-date
+rm $SNa"_"$SNo"_"$LNo$"_out3"*
+
+echo " --> done with mapping at ... $(date)" >> $SNa"_"$SNo"_"$LNo".log"
 
 # extract readnames and remove duplicates
-awk '{print $1}' $SAMPLENAME$"_out5_TExGENES.sam" | sort | uniq > $SAMPLENAME$"_out6_TExGENES_readnames.txt"
+awk '{print $1}' $SNa"_"$SNo"_"$LNo$"_out5_TExGENES.sam" | sort | uniq > $SNa"_"$SNo"_"$LNo$"_out6_TExGENES_readnames.txt"
 
 # combine readnames with long sequences stored in the lookup file
-join -1 1 -2 1 <(sort $SAMPLENAME$"_out6_TExGENES_readnames.txt") <(sort $SAMPLENAME$"_LOOKUP.tsv") > $SAMPLENAME$"_out7_TExGENES_longreads.tsv"
+join -1 1 -2 1 <(sort $SNa"_"$SNo"_"$LNo$"_out6_TExGENES_readnames.txt") <(sort $SNa"_"$SNo"_"$LNo$"_LOOKUP.tsv") > $SNa"_"$SNo"_"$LNo$"_out7_TExGENES_longreads.tsv" &&
+
+rm $SNa"_"$SNo"_"$LNo$"_LOOKUP.tsv"
+rm $SNa"_"$SNo"_"$LNo$"_out6_TExGENES_readnames.txt"
 
 ################################################################################
 
 # the following while loop will add data to file using ">>". just as safety
 # precaution, this line makes sure no data with such a name exists
-rm -f $SAMPLENAME$"_out8_TExGENES_blastedreads_plusnohit.tsv"
+rm -f $SNa"_"$SNo"_"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
 
 # loop through long sequences. two blast searches are performed, one on a
 # reference genome without TE sequences and another one on all TE sequences.
@@ -175,19 +190,20 @@ while IFS=$' ' read -r readname sequence
 do
 		echo "${readname}" > var1
 		echo "${sequence}" > var2
-		echo "${sequence}" | blastn -db $dmel_noTEs -outfmt "6 qstart qend sseqid sstart send sstrand" -num_alignments 1 -num_threads $ncores | head -n 1 > var3		
+		echo "${sequence}" | blastn -db $dmel_noTEs -outfmt "6 qstart qend sseqid sstart send sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var3		
 		if ! [ -s var3 ]; then echo "no-hit" > var3; fi
-		echo "${sequence}" | blastn -db $dmel_onlyTEs -outfmt "6 qstart qend sseqid sstart send slen sstrand" -num_alignments 1 -num_threads $ncores | head -n 1 > var4
+		echo "${sequence}" | blastn -db $dmel_onlyTEs -outfmt "6 qstart qend sseqid sstart send slen sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var4
 		if ! [ -s var4 ]; then echo "no-hit" > var4; fi
-		paste var1 var2 var3 var4 >> $SAMPLENAME$"_out8_TExGENES_blastedreads_plusnohit.tsv"
+		paste var1 var2 var3 var4 >> $SNa"_"$SNo"_"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
 		rm var*
-done < $SAMPLENAME$"_out7_TExGENES_longreads.tsv"
+done < $SNa"_"$SNo"_"$LNo$"_out7_TExGENES_longreads.tsv"
 
 # remove reads that did not give BLAST result
-grep -v no-hit $SAMPLENAME$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv"
+grep -v no-hit $SNa"_"$SNo"_"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" &&
 
-echo "done with BLAST"
-date
+rm $SNa"_"$SNo"_"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
+
+echo " --> done with BLAST at ... $(date)" >> $SNa"_"$SNo"_"$LNo".log"
 
 ################################################################################
 
@@ -195,28 +211,29 @@ date
 # of the mRNA section:
 # 5'-######|GENE|TE|######-3' => PART5
 # 5'-######|TE|GENE|######-3' => PART3
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; if (a < b) {print "PART5"} else {print "PART3"}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.genepart
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; if (a < b) {print "PART5"} else {print "PART3"}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.genepart
 
 # determine the precise breakpoint on the chromosome. this depends on  whether
 # the chromosomal part is PART5 or PART3
-awk 'BEGIN {OFS = "\t"} {a = $5; {print a}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.chr
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d-1} else {print c-1}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.start
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d} else {print c}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.end
-awk 'BEGIN {OFS = "\t"} {a = $1 ; {print a}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.readname
-awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.score
-awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.strand
+awk 'BEGIN {OFS = "\t"} {a = $5; {print a}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.chr
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d-1} else {print c-1}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.start
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d} else {print c}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.end
+awk 'BEGIN {OFS = "\t"} {a = $1 ; {print a}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.readname
+awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.score
+awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.strand
 
-paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname tmpfile.score tmpfile.breakpoint.chr.strand > $SAMPLENAME$"out10_breakpoints.bed"
+paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_"$SNo"_"$LNo$"out10_breakpoints.bed"
 
 # determine the precise breakpoint on the TE. this depends on  whether the TE
 # part is PART5 or PART3
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.TE
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.TE
 
 # determine the overlap between the two mapped sections of the long read
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" > tmpfile.uncertainty
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.uncertainty
 
-paste -d'\t' $SAMPLENAME$"_out9_TExGENES_blastedreads.tsv" tmpfile.breakpoint.chr.end tmpfile.breakpoint.TE tmpfile.uncertainty > $SAMPLENAME$"out11_combined_results.tsv"
+paste -d'\t' $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" tmpfile.breakpoint.chr.end tmpfile.breakpoint.TE tmpfile.uncertainty > $SNa"_"$SNo"_"$LNo$"out11_combined_results.tsv" &&
 
-echo "done!"
-date
+rm $SNa"_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv"
+rm tmpfile.*
 
+echo " --> all done at ... $(date)" >> $SNa"_"$SNo"_"$LNo".log"
