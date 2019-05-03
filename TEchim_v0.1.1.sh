@@ -16,6 +16,7 @@
 # - flash (https://ccb.jhu.edu/software/FLASH/)
 # - STAR (https://github.com/alexdobin/STAR)
 # - blast (https://blast.ncbi.nlm.nih.gov/Blast.cgi)
+# - samtools
 ################################################################################
 
 # set parameters
@@ -233,9 +234,9 @@ awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 	b = $15
 	c = $3
 	d = $9
-	if (c < d) {print a"|"b"|GENE-TE|S"s"|L"l} else {print a"|"b"|TE-GENE|S"s"|L"l}
+	e = $1
+	if (c < d) {print e"|"a"|"b"|GENE-TE|S"s"|L"l} else {print e"|"a"|"b"|TE-GENE|S"s"|L"l}
 	}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.readname
-
 
 awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.score
 awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.strand
