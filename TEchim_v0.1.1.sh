@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - detection of TE-gene chimera in RNA-seq data
-# VERSION: 0.1.1 (dev)
+# VERSION: 0.1.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 03/05/2019 (dd/mm/yyyy)
+# DATE: 08/05/2019 (dd/mm/yyyy)
 # DESCRIPTION: This tool converts overlapping paired-end reads to in-silico
 # pairs of 60nt length, which are then screened for pairs where one mate maps
 # in the genome and the other on a transposon. The contigs of these read pairs
@@ -37,7 +37,7 @@ cd $wd
 mkdir $SNa"_S"$SNo"_L"$LNo
 cd $SNa"_S"$SNo"_L"$LNo
 
-echo "TEchim v 0.1.1 run" > $SNa"_S"$SNo"_L"$LNo".log"
+echo "TEchim v 0.1.2 run" > $SNa"_S"$SNo"_L"$LNo".log"
 echo "input fastq_1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo".log"
 echo "input fastq_2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo".log"
 echo "sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo".log"
@@ -228,6 +228,14 @@ awk 'BEGIN {OFS = "\t"} {a = $5; {print a}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGE
 awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d-1} else {print c-1}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.start
 awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $6 ; d = $7 ; if (a < b) {print d} else {print c}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.end
 
+# determine the precise breakpoint on the TE. this depends on  whether the TE
+# part is PART5 or PART3
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.TE
+
+# determine the overlap between the two mapped sections of the long read
+awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.uncertainty
+
+
 awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 	a = $11
 	gsub(/TEchr_/,"",a)
@@ -241,14 +249,9 @@ awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.score
 awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.chr.strand
 
-paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out10_breakpoints.bed"
+paste -d'|' tmpfile.readname tmpfile.breakpoint.TE tmpfile.uncertainty > tmpfile.readname.extended
 
-# determine the precise breakpoint on the TE. this depends on  whether the TE
-# part is PART5 or PART3
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.TE
-
-# determine the overlap between the two mapped sections of the long read
-awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.uncertainty
+paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out10_breakpoints.bed"
 
 paste -d'\t' $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" tmpfile.breakpoint.chr.end tmpfile.breakpoint.TE tmpfile.uncertainty > $SNa"_S"$SNo"_L"$LNo$"_out11_combined_results.tsv" &&
 
