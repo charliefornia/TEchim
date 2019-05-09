@@ -13,13 +13,20 @@
 # - bedtools
 ################################################################################
 
-# BUILD GENE FILE
-# awk 'BEGIN {OFS = "\t"} {a = $0; b = $10; gsub(/"/,"",b); gsub(/;/,"",b) ; if ($3 == "gene") {print $1"\t"$4"\t"$5"\t"b"\t"$6"\t"$7}}' dmel625_v03.gtf | bedtools sort -i - > dmel625_v04_ONLYgenesFROMgtf.bed
+REF=~/Dropbox/CloudDesktop/REF_cloud/
+REFbase=dmel625_v04
+
+################################################################################
+# BUILD GENONME REF FILES (only once)
+# cd $REF
+# cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "gene") {print $1"\t"$4-1"\t"$5"\t"$10"\t"$6"\t"$7}}' | bedtools sort -i - > $REFbase"_GENES.bed"
+# cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "+") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "-") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_DONORS.bed"
+# cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "-") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "+") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_ACCEPTORS.bed"
+################################################################################
 
 # set parameters
-wd=/Users/CT/Dropbox/CloudDesktop/TEchim_cloud/testing
-input=/Users/CT/Dropbox/CloudDesktop/TEchim_cloud/2018MARCH_TEchim_combined.sorted.bed
-gene_ref=/Users/CT/Dropbox/CloudDesktop/REF_cloud/dmel625_v04_ONLYgenesFROMgtf.bed
+wd=~/Dropbox/CloudDesktop/TEchim_cloud/testing
+input=~/Dropbox/CloudDesktop/TEchim_cloud/2018MARCH_TEchim_combined.sorted.bed
 samplename=2018MARCH_TEchim
 
 # filters for "anchor" insertion
@@ -30,7 +37,7 @@ min_reads=4
 cd $wd
 
 # add a gene tag to each read (i.e. genomic location). this is done using a gene-only version of the gtf file.
-bedtools intersect -wa -a $input -b $gene_ref -loj -s > $samplename"_out01_genetagged.tsv"
+bedtools intersect -wa -a $input -b $REFbase"_GENES.bed" -loj -s > $samplename"_out01_genetagged.tsv"
 
 # separate | delimited field
 sed -e $'s/|/\t/g' $samplename"_out01_genetagged.tsv" > $samplename"_out02_sepparated.tsv"
@@ -65,6 +72,9 @@ do
 	bedtools merge -i "tmp."$samplename"_"$TE"_out05_TE-GENE.tsv" -c 5,12,13,8,21,3,10,6,7,17 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,mode,distinct -d 20 > "tmp."$samplename"_"$TE"_out06_TE-GENE.tsv"
 	bedtools merge -i "tmp."$samplename"_"$TE"_out05_GENE-TE.tsv" -c 5,12,13,8,21,3,10,6,7,17 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,mode,distinct -d 20 > "tmp."$samplename"_"$TE"_out06_GENE-TE.tsv"
 
+	
+
+
 ########### FOR ANCHOR
 	# filter to keep only insertions that were detected in at least $min_repl separate biological replicates with at least $min_reads reads
 	awk -v mreps="$min_repl" -v mreads="$min_reads" 'BEGIN {OFS = "\t"} {a = $0 ; if ( $7 >= mreps && $8 >= mreads) {print a}}' < "tmp."$samplename"_"$TE"_out06_TE-GENE.tsv" > "tmp."$samplename"_"$TE"_out07_TE-GENE.tsv"
@@ -97,7 +107,28 @@ do
 	rm "tmp."$samplename*
 done < $samplename"_out03a_uniqueTEs.tsv"
 
-
+while read line
+do
+	echo $line | awk '{ print $2"\t"$4-1"\t"$4"\t"$5"|"$1"|"$8"\t.\t"$3}' > "tmp."$samplename"_out13.bed"
+	a=$(echo $line | awk '{print $8}')
+	b=$(echo $line | awk '{print $1}')
+	c=""
+	if [ $a == "GENE-TE" ]
+	then
+		grep $b $REF$REFbase"_SPLICE_DONORS.bed" > "tmp."$samplename"_out14_ref_for_overlap.bed"
+		c=$(bedtools intersect -a "tmp."$samplename"_out13.bed" -b "tmp."$samplename"_out14_ref_for_overlap.bed" -loj -wa | head -n 1 | awk '{print $10}' | cut -d "|" -f2)
+		rm "tmp."$samplename"_out14_ref_for_overlap.bed"
+	elif [ $a == "TE-GENE" ]
+	then
+		grep $b $REF$REFbase"_SPLICE_ACCEPTORS.bed" > "tmp."$samplename"_out14_ref_for_overlap.bed"
+		c=$(bedtools intersect -a "tmp."$samplename"_out13.bed" -b "tmp."$samplename"_out14_ref_for_overlap.bed" -loj -wa | head -n 1 | awk '{print $10}' | cut -d "|" -f2)
+		rm "tmp."$samplename"_out14_ref_for_overlap.bed"
+	else
+		c="N/A"
+	fi
+	echo $line | awk -v c="$c" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c}'
+	rm "tmp."$samplename"_out13.bed"
+done < $samplename"_out12_OUTPUT.tsv" > $samplename"_out15.bed"
 
 
 
