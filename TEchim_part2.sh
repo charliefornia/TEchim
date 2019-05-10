@@ -22,6 +22,9 @@ REFbase=dmel625_v04
 # cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "gene") {print $1"\t"$4-1"\t"$5"\t"$10"\t"$6"\t"$7}}' | bedtools sort -i - > $REFbase"_GENES.bed"
 # cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "+") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "-") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_DONORS.bed"
 # cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "-") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "+") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_ACCEPTORS.bed"
+
+
+
 ################################################################################
 
 # set parameters
@@ -40,7 +43,8 @@ cd $wd
 bedtools intersect -wa -a $input -b $REF$REFbase"_GENES.bed" -loj -s > $samplename"_out01_genetagged.tsv"
 
 # separate | delimited field
-sed -e $'s/|/\t/g' $samplename"_out01_genetagged.tsv" > $samplename"_out02_sepparated.tsv"
+sed -e $'s/|/\t/g' $samplename"_out01_genetagged.tsv" > $samplename"_out02_sepparated.tsv" &&\
+	rm $samplename"_out01_genetagged.tsv"
 
 # generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
 awk 'BEGIN {OFS = "\t"} {
@@ -48,10 +52,12 @@ awk 'BEGIN {OFS = "\t"} {
 	gsub(/_LTR/,"",a)
 	c = substr($4, 1, length($4)-2)
 	print $0"\t"a"\t"c
-	}' < $samplename"_out02_sepparated.tsv" > $samplename"_out03pre_TEbase.tsv"
+	}' < $samplename"_out02_sepparated.tsv" > $samplename"_out03pre_TEbase.tsv" &&\
+		rm $samplename"_out02_sepparated.tsv"
 
 # remove duplicate reads (where both :A and :B version of the same reads were picked up
-awk '!seen[$21]++' $samplename"_out03pre_TEbase.tsv" > $samplename"_out03_TEbase.tsv"
+awk '!seen[$21]++' $samplename"_out03pre_TEbase.tsv" > $samplename"_out03_TEbase.tsv" &&\
+	rm $samplename"_out03pre_TEbase.tsv"
 
 # create list of all TEs in dataset
 cut -f20 $samplename"_out03_TEbase.tsv" | sort | uniq > $samplename"_out03a_uniqueTEs.tsv"
@@ -106,6 +112,9 @@ do
 	rm "tmp."$samplename*
 done < $samplename"_out03a_uniqueTEs.tsv"
 
+rm $samplename"_out03a_uniqueTEs.tsv"
+rm $samplename"_out03_TEbase.tsv"
+
 while read line
 do
 	echo $line | awk '{ print $2"\t"$4-1"\t"$4"\t"$5"|"$1"|"$6"\t.\t"$3}' > "tmp."$samplename"_out13.bed"
@@ -127,9 +136,12 @@ do
 	fi
 	echo $line | awk -v c="$c" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c}'
 	rm "tmp."$samplename"_out13.bed"
-done < $samplename"_out12_OUTPUT.tsv" > $samplename"_out15.bed"
+done < $samplename"_out12_OUTPUT.tsv" > $samplename"_out15.tsv" &&\
+	rm $samplename"_out12_OUTPUT.tsv"
 
-cat $samplename"_out15.bed" | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $samplename"_newcolb"
-awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12;}' $samplename"_out15.bed" > $samplename"_newcola"
+cat $samplename"_out15.tsv" | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $samplename"_newcolb"
+awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12;}' $samplename"_out15.tsv" > $samplename"_newcola" &&\
+	rm $samplename"_out15.tsv"
 
-paste $samplename"_newcola" $samplename"_newcolb" > $samplename"_out16.bed"
+paste $samplename"_newcola" $samplename"_newcolb" > $samplename"_chimericreads_final.tsv"
+rm $samplename"_newcola" $samplename"_newcolb"
