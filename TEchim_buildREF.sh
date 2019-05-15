@@ -55,7 +55,7 @@ do
 		# note that here the first line is removed, not the last one. as a consequence, the values are shifted up one line.
 		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk 'NR>1 {print$4-1}' > "tmp."$REFbase".colb.tsv"
 		# the remaining information about gene- and transcript name and id are added.
-		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk '{print $6"\t"$7"\t"$8"\t"$9}' | sed '$d'  > "tmp."$REFbase".colc.tsv"
+		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk '{print $6"\t"$7"\t"$8"\t"$9"; "$10"; "$11"; "$12"; "$13"; "$14"; "$15"; "$16}' | sed '$d'  > "tmp."$REFbase".colc.tsv"
 		paste "tmp."$REFbase".cola.tsv" "tmp."$REFbase".colb.tsv" "tmp."$REFbase".colc.tsv" >> $REFbase"_INTRONS.gtf"
 		rm "tmp."$REFbase".col"*
 	elif [[ $(fgrep $line "tmp."$REFbase".exons.gtf" | head -n1 | awk '{print$7}') == "-" ]]
@@ -65,7 +65,7 @@ do
 		# on the negative strand, the beginning of introns are the start of the exon minus one.
 		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk '{print$4-1}' | sed '$d' > "tmp."$REFbase".colb.tsv"
 		# on the negative strand, the end of exons are the beginning of the trailing exon plus one.
-		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk 'NR>1 {print $6"\t"$7"\t"$8"\t"$9}'   > "tmp."$REFbase".colc.tsv"
+		LC_ALL=C fgrep $line "tmp."$REFbase".exons.gtf" | awk 'NR>1 {print $6"\t"$7"\t"$8"\t"$9"; "$10"; "$11"; "$12"; "$13"; "$14"; "$15"; "$16}'   > "tmp."$REFbase".colc.tsv"
 		paste "tmp."$REFbase".cola.tsv" "tmp."$REFbase".colb.tsv" "tmp."$REFbase".colc.tsv" >> $REFbase"_INTRONS.gtf"
 		rm "tmp."$REFbase".col"*
 	else
