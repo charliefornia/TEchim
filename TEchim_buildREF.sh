@@ -23,6 +23,10 @@ cd $REF
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "gene") {print $1"\t"$4-1"\t"$5"\t"$10"\t"$6"\t"$7}}' | bedtools sort -i - > $REFbase"_GENES.bed"
 
 ################################################################################
+# BUILD _EXONS.gtf
+cat $REFbase".gtf" | awk '{if ($3 == "exon") {print $0}}' > $REFbase"_EXONS.gtf"
+
+################################################################################
 # BUILD _SPLICE_DONORS.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "+") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "-") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_DONORS.bed"
 
