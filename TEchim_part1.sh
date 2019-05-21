@@ -145,12 +145,14 @@ rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m1.4
 cat b_m1.4 b_2.1 > b_m12.1
 
 # create look-up table and remove "@" at the beginning of the readname
-paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv" &&
+paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
+LC_ALL=C sort $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv" > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv" &&
 
 rm a_*
 rm b_*
 rm c_*
 rm d_*
+rm sort $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
 
 echo " --> done with cropping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo".log"
 
@@ -180,9 +182,8 @@ echo " --> done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo".log"
 awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | sort | uniq > $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt"
 
 # combine readnames with long sequences stored in the lookup file
-join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt") <(sort $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv") > $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" &&
+join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt") < $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" &&
 
-rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
 rm $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt"
 
 ################################################################################
