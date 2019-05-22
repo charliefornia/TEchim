@@ -5,7 +5,7 @@
 # VERSION: 0.1.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
 # DATE: 17/05/2019 (dd/mm/yyyy)
-# DESCRIPTION:
+# DESCRIPTION: This script adds quantitative data to output from PART2
 ################################################################################
 
 ################################################################################
@@ -15,21 +15,24 @@
 ################################################################################
 
 ################################################################################
+################################################################################
 # set parameters
-wd=~/Dropbox/CloudDesktop/TEchim_cloud/ANALYSIS/
-path_to_TEchimPART2_output=~/Documents/2019MAY_TEscoex_longRNA/fromHPC/
-PART2_output=~/Dropbox/CloudDesktop/TEchim_cloud/2018MARCH_TEchim_chimericreads_final.tsv
-SNa=2018MARCH_TEchim
+wd=~
+path_to_PART1_output=/PATH/TO/PART1/OUTPUT/
+path_to_PART2_output=/PATH/TO/PART2/OUTPUT/
+SNa=NAME_OF_EXP
 NumSam=6
 NumLan=2
-REF=~/Dropbox/CloudDesktop/REF_cloud/
-REFbase=dmel625_v04
+REFpath=/PATH/TO/REF/
+REFbase=dmel625
+################################################################################
 ################################################################################
 
-# NOTE: this is assuming that read length is 60nt
+# NOTE: this scrpt is assuming that read length is 60nt (=> standard output from PART1)
 
 # change to wd
 cd $wd
+
 while read line
 do
 	# check if line in final .tsv has breakpoint near splice site ("." means no)
@@ -64,9 +67,9 @@ do
 				for ((l=1; l <= NumLan ; l++))
 				do
 					# check if STAR output bam has already been indexed, index if not
-					if [[ -f $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" ; fi
+					if [[ -f $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" ; fi
 					# get number of reads inside region 1 where mate maps onto transposon
-					samtools view $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out3_TEreads"
+					samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out3_TEreads"
 					# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
 					if [[ $(echo $line | awk '{print $3}') == "+" ]]
 					then							
@@ -75,13 +78,13 @@ do
 							# determine the nearest intron-exon junction beyond the breakpoint. if the gene is on the positive strand and the fragment is GENE-TE, then the next non-TE exon is located downstream (the smallest positive value in the bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$8}}' | head -n1)
 							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps beyond the next exon junction.
-							samtools view $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]
 						then
 							# if fragment is TE-GENE, then the "next" intron-exon junction is upstream of the breakpoint ( the smallest NEGATIVE value in the bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$9}}' | head -n1)
 							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps before the next exon junction.
-							samtools view $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						fi
 					elif [[ $(echo $line | awk '{print $3}') == "-" ]]
 					then 
@@ -90,11 +93,11 @@ do
 							# if the gene is on the negative strand	and the fragment is GENE-TE, then the next non-TE exon is upstream of breakpoint (BUT: TAKE smallest POSITIVE value in bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$9}}' | head -n1)
 							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps upstream to the next exon junction.
-							samtools view $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]
 						then
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$8}}' | head -n1)
-							samtools view $path_to_TEchimPART2_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"	
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"	
 						fi
 					fi
 				done
@@ -107,4 +110,4 @@ do
 		fi
 		rm -f "tmp."$SNa*
 	fi
-done < $PART2_output > $SNa"_out20_withGENEreads.tsv"
+done < $path_to_PART2_output$SNa"_chimericreads_final.tsv" > $SNa"_chimericreads_final_withGENEreads.tsv"

@@ -2,7 +2,7 @@
 
 ################################################################################
 # TITLE: TEchim - build genomes
-# VERSION: 0.1.1 (dev)
+# VERSION: 0.1.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
 # DATE: 22/05/2019 (dd/mm/yyyy)
 # DESCRIPTION: Run this once to create necesseary support files
@@ -11,13 +11,49 @@
 ################################################################################
 # REQUIREMENTS:
 # - bedtools
+# - RepeatMasker
+# - STAR (https://github.com/alexdobin/STAR)
+# - blast (https://blast.ncbi.nlm.nih.gov/Blast.cgi)
 ################################################################################
 
-REFpath=~/Dropbox/CloudDesktop/REF_cloud
-REFbase=dmel625_v04
-# REFbase.gtf must exist
+################################################################################
+################################################################################
+REFpath=/PATH/TO/REF/
+REFbase=dmel625
+TElist=TEs.fa
+nc=10
+# REFpath directory must contain:
+#     - REFbase.fa (reference genome)
+#     - REFbase.gtf
+#     - TEs.fa (TE consensus sequences in fasta format)
+################################################################################
+################################################################################
 
+# change to REF directory
 cd $REFpath
+
+# use repeatmasker to mask any sequence in the reference genome that looks like a transposon
+RepeatMasker -lib $TElist -no_is -nolow -s -pa $nc $REFbase".fa" 
+rm $REFbase".fa.cat.gz"
+rm $REFbase".fa.ori.out"
+rm $REFbase".fa.out"
+rm $REFbase".fa.tbl"
+mv $REFbase".fa.masked" $REFbase".clean.noTEs.fa"
+
+# create FASTA where each TE has chromosome name ">TEchr_..."
+awk '{if ($1 ~ ">") {gsub(/>/,""); print ">TEchr_"$1"\t"$2"\t"$3} else {print $0}}' $TElist > $REFbase".clean.onlyTEs.fa"
+
+# combine TE-cleaned reference genome with TE-fasta file
+cat $REFbase".clean.noTEs.fa" $REFbase".clean.onlyTEs.fa" > $REFbase".clean.fa"
+
+# generate STAR genome index
+mkdir "STAR_"$REFbase
+STAR --runMode genomeGenerate --genomeFastaFiles $REFbase".clean.fa" --genomeDir "./STAR_"$REFbase --runThreadN $nc
+mv Log.out "STAR_"$REFbase"/."
+
+# generate BLAST databases
+makeblastdb -dbtype nucl -in $REFbase".clean.onlyTEs.fa"
+makeblastdb -dbtype nucl -in $REFbase".clean.noTEs.fa"
 
 # BUILD _GENES.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "gene") {print $1"\t"$4-1"\t"$5"\t"$10"\t"$6"\t"$7}}' | bedtools sort -i - > $REFbase"_GENES.bed"

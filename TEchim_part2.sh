@@ -4,8 +4,9 @@
 # TITLE: TEchim - part 2
 # VERSION: 0.1.1 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 09/05/2019 (dd/mm/yyyy)
-# DESCRIPTION: tbd
+# DATE: 22/05/2019 (dd/mm/yyyy)
+# DESCRIPTION: This script combines separate samples and lanes, and generates
+# summary .tsv files with all necessary data
 ################################################################################
 
 ################################################################################
@@ -13,16 +14,20 @@
 # - bedtools
 ################################################################################
 
+################################################################################
+################################################################################
 # set parameters
 wd=~
-path_to_PART1_output=~/PATH/TO/PART1/OUTPUT/
-SNa=NameOfSample
-REF=~/PATH/TO/REF/
-REFbase=dmel625_v04
+path_to_PART1_output=/PATH/TO/PART1/OUTPUT/
+SNa=NAME_OF_EXP
+REFpath=/PATH/TO/REF/
+REFbase=dmel625
 
 # filters for "anchor" insertion
 min_repl=2
 min_reads=4
+################################################################################
+################################################################################
 
 # change to wd
 cd $wd
@@ -31,7 +36,7 @@ cd $wd
 cat $path_to_PART1_output$SNa*"/"$SNa*"_out10_breakpoints.bed" | bedtools sort -i - > $SNa"_in10_combined.sorted.bed"
 
 # add a gene tag to each read (i.e. genomic location). this is done using a gene-only version of the gtf file.
-bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REF$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
+bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
 
 # separate | delimited field
 sed -e $'s/|/\t/g' $SNa"_out01_genetagged.tsv" > $SNa"_out02_sepparated.tsv" &&\
@@ -54,7 +59,6 @@ awk '!seen[$21]++' $SNa"_out03pre_TEbase.tsv" > $SNa"_out03_TEbase.tsv" &&\
 cut -f20 $SNa"_out03_TEbase.tsv" | sort | uniq > $SNa"_out03a_uniqueTEs.tsv"
 
 # to create collection file, first make sure this file does not yet exist
-rm -f $SNa"_out06.maininsertions.tsv"
 rm -f $SNa"_out12_OUTPUT.tsv"
 
 # loop through all TEs in the dataset
@@ -95,12 +99,12 @@ do
 	
 	# this list of genes is used to add non-anchor hits to ANCHOR hits, if they overlap with the same gene and TE
 	while read GENE
-		do
-			# create output file that contains for every gene with at least one anchor insertion, all the insertions of that TE
-			# ANCHOR hits have "yes" appended, others "NO"
-			awk -v g="$GENE" '{if ($12 ~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""YES";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
-			awk -v g="$GENE" '{if ($12 ~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""NO";}' "tmp."$SNa"_"$TE"_out09b_REST.tsv" >> $SNa"_out12_OUTPUT.tsv"
-		done < "tmp."$SNa"_"$TE"_out11_genes.tsv"
+	do
+		# create output file that contains for every gene with at least one anchor insertion, all the insertions of that TE
+		# ANCHOR hits have "yes" appended, others "NO"
+		awk -v g="$GENE" '{if ($12 ~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""YES";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+		awk -v g="$GENE" '{if ($12 ~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""NO";}' "tmp."$SNa"_"$TE"_out09b_REST.tsv" >> $SNa"_out12_OUTPUT.tsv"
+	done < "tmp."$SNa"_"$TE"_out11_genes.tsv"
 	
 	rm "tmp."$SNa*
 done < $SNa"_out03a_uniqueTEs.tsv"
@@ -121,7 +125,7 @@ do
 	b=$(echo $line | awk '{print $1}')
 	
 	# intersect with FEATURES file to get all ovelapping features (output is ;-separated)
-	d=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b $REF$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+	d=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
 	
 	# check whether breakpoint on the genome overlaps with splice donor site (in the case of a GENE-TE fragment)
 	# or with splice acceptor site (in the case of a TE-GENE fragment). the REF files _SPLICE_DONORS.bed and 
@@ -131,13 +135,13 @@ do
 	# for GENE-TE fragments, the exon is the splice donor
 	if [ $a == "GENE-TE" ]
 	then
-		grep $b $REF$REFbase"_SPLICE_DONORS.bed" > "tmp."$SNa"_out14_ref_for_overlap.bed"
+		grep $b $REFpath$REFbase"_SPLICE_DONORS.bed" > "tmp."$SNa"_out14_ref_for_overlap.bed"
 		c=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b "tmp."$SNa"_out14_ref_for_overlap.bed" -loj -wa | head -n 1 | awk '{print $10}' | cut -d "|" -f2)
 		rm "tmp."$SNa"_out14_ref_for_overlap.bed"
 	# for TE-GENE fragments, the exon is the splice acceptor
 	elif [ $a == "TE-GENE" ]
 	then
-		grep $b $REF$REFbase"_SPLICE_ACCEPTORS.bed" > "tmp."$SNa"_out14_ref_for_overlap.bed"
+		grep $b $REFpath$REFbase"_SPLICE_ACCEPTORS.bed" > "tmp."$SNa"_out14_ref_for_overlap.bed"
 		c=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b "tmp."$SNa"_out14_ref_for_overlap.bed" -loj -wa | head -n 1 | awk '{print $10}' | cut -d "|" -f2)
 		rm "tmp."$SNa"_out14_ref_for_overlap.bed"
 	else
