@@ -4,8 +4,8 @@
 # TITLE: TEchim - build genomes
 # VERSION: 0.1.1 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 13/05/2019 (dd/mm/yyyy)
-# DESCRIPTION: tbd
+# DATE: 22/05/2019 (dd/mm/yyyy)
+# DESCRIPTION: Run this once to create necesseary support files
 ################################################################################
 
 ################################################################################
@@ -13,28 +13,24 @@
 # - bedtools
 ################################################################################
 
-REF=~/Dropbox/CloudDesktop/REF_cloud
+REFpath=~/Dropbox/CloudDesktop/REF_cloud
 REFbase=dmel625_v04
+# REFbase.gtf must exist
 
-cd $REF
+cd $REFpath
 
-################################################################################
 # BUILD _GENES.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "gene") {print $1"\t"$4-1"\t"$5"\t"$10"\t"$6"\t"$7}}' | bedtools sort -i - > $REFbase"_GENES.bed"
 
-################################################################################
 # BUILD _EXONS.gtf
 cat $REFbase".gtf" | awk '{if ($3 == "exon") {print $0}}' > $REFbase"_EXONS.gtf"
 
-################################################################################
 # BUILD _SPLICE_DONORS.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "+") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "-") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_DONORS.bed"
 
-################################################################################
 # BUILD _SPLICE_ACCEPTORS.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$10); if ($3 == "exon") {if ($7 == "-") {print $1"\t"sqrt(($5-11)^2)"\t"$5+10"\t"$10"|"$5"\t"$6"\t"$7} else if ($7 == "+") {print $1"\t"sqrt(($4-11)^2)"\t"$4+10"\t"$10"|"$4"\t"$6"\t"$7}}}' | bedtools sort -i - > $REFbase"_SPLICE_ACCEPTORS.bed"
 
-################################################################################
 # BUILD _INTRONS.gtf file - here, an intron is defined as any region between two
 # exons of the same transcript.
 # extract all lines that describe an "exon" in input gtf
@@ -75,10 +71,8 @@ do
 	else
 		echo "N/A\t"$line >> $REFbase"_INTRONS.gtf"
 	fi
-done < "tmp."$REFbase".exons.transcripts.gtf" &&\
-rm "tmp."$REFbase*
+done < "tmp."$REFbase".exons.transcripts.gtf"
 
-################################################################################
 # BUILD _FEATURES.bed
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if ($3 == "5UTR") {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' > "tmp."$REFbase"_FEATURES.bed"
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if ($3 == "CDS") {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> "tmp."$REFbase"_FEATURES.bed"
@@ -93,6 +87,4 @@ cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if
 cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if ($3 == "miRNA") {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> "tmp."$REFbase"_FEATURES.bed"
 bedtools sort -i "tmp."$REFbase"_FEATURES.bed" > $REFbase"_FEATURES.bed"
 bedtools sort -i $REFbase"_INTRONS.gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> $REFbase"_FEATURES.bed"
-
-
-
+rm "tmp."$REFbase*
