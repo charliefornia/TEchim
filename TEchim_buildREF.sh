@@ -140,15 +140,15 @@ rm $REFbase".fa.cat.gz"
 rm $REFbase".fa.ori.out"
 rm $REFbase".fa.out"
 rm $REFbase".fa.tbl"
-mv $REFbase".fa.masked" $REFbase".IGEclean.noIGEs.fa"
+mv $REFbase".fa.masked" $REFbase"_IGE.clean.noTEs.fa"
 # create FASTA where each IGE has chromosome name ">IGEchr_..."
-awk '{if ($1 ~ ">") {gsub(/>/,""); print ">IGEchr_"$1"\t"$2"\t"$3} else {print $0}}' $REFbase"_IGEs.fa" > $REFbase".IGEclean.onlyIGEs.fa"
+awk '{if ($1 ~ ">") {gsub(/>/,""); print ">IGEchr_"$1"\t"$2"\t"$3} else {print $0}}' $REFbase"_IGEs.fa" > $REFbase"_IGE.clean.onlyTEs.fa"
 # combine IGE-cleaned reference genome with IGE-fasta file
-cat $REFbase".IGEclean.noIGEs.fa" $REFbase".IGEclean.onlyIGEs.fa" > $REFbase".IGEclean.fa"
+cat $REFbase"_IGE.clean.noTEs.fa" $REFbase"_IGE.clean.onlyTEs.fa" > $REFbase"_IGE.clean.fa"
 # generate STAR genome index
 mkdir "STAR_"$REFbase"_IGE"
-STAR --runMode genomeGenerate --genomeFastaFiles $REFbase".IGEclean.fa" --genomeDir "./STAR_"$REFbase"_IGE" --runThreadN $nc
+STAR --runMode genomeGenerate --genomeFastaFiles $REFbase"_IGE.clean.fa" --genomeDir "./STAR_"$REFbase"_IGE" --runThreadN $nc
 mv Log.out "STAR_"$REFbase"_IGE/."
 # generate BLAST databases
-makeblastdb -dbtype nucl -in $REFbase".IGEclean.onlyIGEs.fa"
-makeblastdb -dbtype nucl -in $REFbase".IGEclean.noIGEs.fa"
+makeblastdb -dbtype nucl -in $REFbase"_IGE.clean.onlyTEs.fa"
+makeblastdb -dbtype nucl -in $REFbase"_IGE.clean.noTEs.fa"
