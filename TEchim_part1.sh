@@ -152,7 +152,7 @@ echo " --> done with cropping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo".log"
 
 # run STAR in chimera-mode
 STAR --runThreadN $nc \
-	--genomeDir $REFpath"STAR_"$REFbase"/" \
+	--genomeDir $REFpath"STAR_"$REFbase \
 	--readFilesIn $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta" \
 	--chimSegmentMin 20 \
 	--chimOutType WithinBAM \
