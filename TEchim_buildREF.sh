@@ -141,8 +141,8 @@ rm $REFbase".fa.ori.out"
 rm $REFbase".fa.out"
 rm $REFbase".fa.tbl"
 mv $REFbase".fa.masked" $REFbase"_IGE.clean.noTEs.fa"
-# create FASTA where each IGE has chromosome name ">IGEchr_..."
-awk '{if ($1 ~ ">") {gsub(/>/,""); print ">IGEchr_"$1"\t"$2"\t"$3} else {print $0}}' $REFbase"_IGEs.fa" > $REFbase"_IGE.clean.onlyTEs.fa"
+# create FASTA where each IGE has chromosome name ">TEchr_..."
+awk '{if ($1 ~ ">") {gsub(/>/,""); print ">TEchr_"$1"\t"$2"\t"$3} else {print $0}}' $REFbase"_IGEs.fa" > $REFbase"_IGE.clean.onlyTEs.fa"
 # combine IGE-cleaned reference genome with IGE-fasta file
 cat $REFbase"_IGE.clean.noTEs.fa" $REFbase"_IGE.clean.onlyTEs.fa" > $REFbase"_IGE.clean.fa"
 # generate STAR genome index
