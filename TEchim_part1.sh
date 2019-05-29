@@ -194,9 +194,13 @@ align_and_filter()
 	samtools view $SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam"
 	mkdir $SNa"_S"$SNo"_L"$LNo"_STAR"
 	mv $SNa"_S"$SNo"_L"$LNo$"_out4"* $SNa"_S"$SNo"_L"$LNo"_STAR"/.
+	if [ ! -s $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" ]; then
+		echo " #### ERROR: file does not have any TE-GENE brakpoint spanning reads!" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+		exit
+	fi
 	echo " --> done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
 }
-
 
 blast_on_longreads ()
 {
@@ -303,7 +307,7 @@ if [ -f "$FASTQ2" ]; then
 	merge_reads $FASTQ1 $FASTQ2
 	create_fasta $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz" \
 		&& rm $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" && rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz"
-else
+elif [ -f "$FASTQ1" ]; then
 	create_fasta $FASTQ1
 fi
 
