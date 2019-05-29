@@ -1,11 +1,12 @@
 #!/bin/bash
 
 ################################################################################
-# TITLE: TEchim - detection of TE-gene chimera in gDNA data
-# VERSION: 0.1.2 (dev)
+# TITLE: TEchim - quantify chimeras using LTR-spanning reads
+# VERSION: 0.1.3 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 42/05/2019 (dd/mm/yyyy)
-# DESCRIPTION:
+# DATE: 29/05/2019 (dd/mm/yyyy)
+# DESCRIPTION: This tool measures the difference between LTR-TE vs. LTR-gene
+# breakpoint-spanning contigs
 ################################################################################
 
 ################################################################################
@@ -16,12 +17,12 @@
 ################################################################################
 ################################################################################
 # set parameters
-wd=/Users/koalcan/Dropbox/CloudDesktop/TEchim_cloud/DEV/
-SNa=2018MARCH_TEchim
-REFpath=/Users/koalcan/Documents/REF_2019FEB/for_TEchim/
+wd=~
+SNa=NAME_OF_EXP
+REFpath=/PATH/TO/REF/
 REFbase=dmel625
 TElist=TEs.fa
-path_to_PART1_output=/Users/koalcan/Documents/2019MAY_TEscoex_longRNA/fromHPC/
+path_to_PART1_output=/PATH/TO/PART1/OUTPUT/
 NumSam=6
 NumLan=2
 ################################################################################
