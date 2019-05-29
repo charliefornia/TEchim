@@ -172,8 +172,7 @@ create_fasta()
 				rm d_*
 				exit
 				;;
-		esac
-		
+		esac	
 	fi
 	# create look-up table and remove "@" at the beginning of the readname
 	paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
@@ -307,7 +306,7 @@ cd $SNa"_S"$SNo"_L"$LNo
 # create .log file
 logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
 echo "====================" > $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "|| TEchim v 0.1.2 || " >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+echo "|| TEchim v 0.1.3 || " >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
 echo "====================" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
 echo "Parameters:" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
 echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
