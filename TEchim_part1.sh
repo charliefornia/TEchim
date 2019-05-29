@@ -218,7 +218,7 @@ blast_on_longreads ()
 	# extract readnames and remove duplicates
 	awk '{print $1}' $1 | sort | uniq > $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt"
 	# combine readnames with long sequences stored in the lookup file
-	join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt") <(zcat < $2 | sort) > $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" && rm $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt" && rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz"
+	join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt") <(zcat < $2 ) > $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" && rm $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt" && rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz"
 	# the following while loop will add data to file using ">>". just as safety
 	# precaution, this line makes sure no data with such a name exists
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
