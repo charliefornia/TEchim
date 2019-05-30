@@ -129,3 +129,12 @@ cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if
 bedtools sort -i "tmp."$REFbase"_FEATURES.bed" > $REFbase"_FEATURES.bed"
 bedtools sort -i $REFbase"_INTRONS.gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> $REFbase"_FEATURES.bed"
 rm "tmp."$REFbase*
+
+
+# GENERATE support files for IGE
+tmp_TEmin=$(grep -v ">" $TElist | awk '{l=length($1); print l}' | sort -n | head -n1)
+cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmin) {print $1"\t"$4-1"\t"$5"\t"$10"@"$14"\t.\t"$7}}' > "tmp."$REFbase".filtered_CDS.tsv"
+bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name > "tmp."$REFbase".filtered_CDS.fasta"
+makeblastdb -dbtype nucl -in $REFbase".fa"
+blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -c | awk '{if($1 = "1") print $2}' > "tmp."$REFbase".use_these_CDS.tsv"
+awk '{a=$1; gsub(/::/,"\t"); gsub(/:/,"\t",$2); gsub(/-/,"\t",$2); print $2"\t"$3"\t"$4"\t"a}' "tmp."$REFbase".use_these_CDS.tsv" > $REFbase".CDS_for_IGE.bed"
