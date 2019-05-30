@@ -32,6 +32,13 @@ nc=10
 # change to REF directory
 cd $REFpath
 
+# create TE.fa.bed file
+awk '{if($1 !~ ">") {a=length($1); print a}}' $TElist > tmp.TElengths
+awk '{if($1 ~ ">") {gsub(/>/,""); print $1}}' $TElist > tmp.TEnames
+paste tmp.TElengths tmp.TEnames > tmp.TEcomb
+awk '{print "TEchr_"$2"\t0\t"$1"\t"$2}' tmp.TEcomb > $TElist".bed"
+rm tmp.TE*
+
 # use repeatmasker to mask any sequence in the reference genome that looks like a transposon
 RepeatMasker -lib $TElist -no_is -nolow -s -pa $nc $REFbase".fa" 
 rm $REFbase".fa.cat.gz"
@@ -122,33 +129,3 @@ cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if
 bedtools sort -i "tmp."$REFbase"_FEATURES.bed" > $REFbase"_FEATURES.bed"
 bedtools sort -i $REFbase"_INTRONS.gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> $REFbase"_FEATURES.bed"
 rm "tmp."$REFbase*
-
-# BUILD IGE references
-# count number of nucleotides in TEs.fa
-tmp_TEnucl=$(grep -v ">" $TElist | awk '{l=length($1); sum+=l;} END {print sum}')
-# shortest TE length
-tmp_TEmin=$(grep -v ">" $TElist | awk '{l=length($1); print l}' | sort -n | head -n1)
-# create random collection of CDS's
-cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmin) {print $1"\t"$4-1"\t"$5"\t"$10"@"$14"\t.\t"$7}}' | sort -R > "tmp."$REFbase".randomised_CDS.tsv"
-# test how many lines of the tmp.XX.randomised_CDS.tsv make up the same number of nucleotides as TEs.fa
-tmp_nlines=$(awk -v tenucl="$tmp_TEnucl" '{sum+=$3-$2; if (sum > tenucl) {print NR}}' "tmp."$REFbase".randomised_CDS.tsv" | head -n1)
-# create FASTA of selected CDS' -> they are now the IGEs
-head -n $tmp_nlines "tmp."$REFbase".randomised_CDS.tsv" | bedtools getfasta -fi $REFbase".fa" -bed - -s -name > $REFbase"_IGEs.fa" && rm "tmp."$REFbase".randomised_CDS.tsv"
-# mask IGEs in reference genome
-RepeatMasker -lib $REFbase"_IGEs.fa" -no_is -nolow -s -pa $nc $REFbase".fa" 
-rm $REFbase".fa.cat.gz"
-rm $REFbase".fa.ori.out"
-rm $REFbase".fa.out"
-rm $REFbase".fa.tbl"
-mv $REFbase".fa.masked" $REFbase"_IGE.clean.noTEs.fa"
-# create FASTA where each IGE has chromosome name ">TEchr_..."
-awk '{if ($1 ~ ">") {gsub(/>/,""); print ">TEchr_"$1"\t"$2"\t"$3} else {print $0}}' $REFbase"_IGEs.fa" > $REFbase"_IGE.clean.onlyTEs.fa"
-# combine IGE-cleaned reference genome with IGE-fasta file
-cat $REFbase"_IGE.clean.noTEs.fa" $REFbase"_IGE.clean.onlyTEs.fa" > $REFbase"_IGE.clean.fa"
-# generate STAR genome index
-mkdir "STAR_"$REFbase"_IGE"
-STAR --runMode genomeGenerate --genomeFastaFiles $REFbase"_IGE.clean.fa" --genomeDir "./STAR_"$REFbase"_IGE" --runThreadN $nc
-mv Log.out "STAR_"$REFbase"_IGE/."
-# generate BLAST databases
-makeblastdb -dbtype nucl -in $REFbase"_IGE.clean.onlyTEs.fa"
-makeblastdb -dbtype nucl -in $REFbase"_IGE.clean.noTEs.fa"
