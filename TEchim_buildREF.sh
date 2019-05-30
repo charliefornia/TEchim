@@ -138,3 +138,4 @@ bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name >
 makeblastdb -dbtype nucl -in $REFbase".fa"
 blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -c | awk '{if($1 = "1") print $2}' > "tmp."$REFbase".use_these_CDS.tsv"
 awk '{a=$1; gsub(/::/,"\t"); gsub(/:/,"\t",$2); gsub(/-/,"\t",$2); print $2"\t"$3"\t"$4"\t"a}' "tmp."$REFbase".use_these_CDS.tsv" > $REFbase".CDS_for_IGE.bed"
+rm "tmp."$REFbase*
