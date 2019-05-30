@@ -129,7 +129,7 @@ tmp_TEnucl=$(grep -v ">" $TElist | awk '{l=length($1); sum+=l;} END {print sum}'
 # shortest TE length
 tmp_TEmin=$(grep -v ">" $TElist | awk '{l=length($1); print l}' | sort -n | head -n1)
 # create random collection of CDS's
-cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmin) {print $1"\t"$4-1"\t"$5"\t"$10"|"$14"\t.\t"$7}}' | sort -R > "tmp."$REFbase".randomised_CDS.tsv"
+cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmin) {print $1"\t"$4-1"\t"$5"\t"$10"@"$14"\t.\t"$7}}' | sort -R > "tmp."$REFbase".randomised_CDS.tsv"
 # test how many lines of the tmp.XX.randomised_CDS.tsv make up the same number of nucleotides as TEs.fa
 tmp_nlines=$(awk -v tenucl="$tmp_TEnucl" '{sum+=$3-$2; if (sum > tenucl) {print NR}}' "tmp."$REFbase".randomised_CDS.tsv" | head -n1)
 # create FASTA of selected CDS' -> they are now the IGEs
