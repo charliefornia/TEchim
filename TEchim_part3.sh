@@ -43,7 +43,7 @@ do
 		# get gene name
 		input_gene=$(echo $line | awk '{print $1}')
 		# get exons of input gene 				  | convert to bed 								  | sort			   | remove duplicate lines			> store as temporary file for this gene
-		grep $input_gene $REF$REFbase"_EXONS.gtf" | awk '{print $1"\t"$4-1"\t"$5"\texon\t.\t"$7}' | bedtools sort -i - | awk '!seen[$2$3]++ {print $0}' > "tmp."$SNa"_"$input_gene".all_exons.bed"
+		grep $input_gene $REFpath$REFbase"_EXONS.gtf" | awk '{print $1"\t"$4-1"\t"$5"\texon\t.\t"$7}' | bedtools sort -i - | awk '!seen[$2$3]++ {print $0}' > "tmp."$SNa"_"$input_gene".all_exons.bed"
 		# create bedfile with chromosomal location of exon-intron junction
 		echo $line | awk '{print $2"\t"$11-1"\t"$11"\t"$1"\t.\t"$3}' > "tmp."$SNa"_out1_breakpoint.bed"
 		# create list with genomic distances of exons to chromosomal breakpoint -strand specific -print distance to (a) -show top 100
