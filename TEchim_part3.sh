@@ -28,7 +28,6 @@ REFbase=dmel625
 ################################################################################
 ################################################################################
 
-# NOTE: this scrpt is assuming that read length is 60nt (=> standard output from PART1)
 
 # change to wd
 cd $wd
@@ -70,6 +69,7 @@ do
 					if [[ -f $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" ; fi
 					# get number of reads inside region 1 where mate maps onto transposon
 					samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out3_TEreads"
+					length_mode=$(samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" | sort | uniq -c | sort -rn | awk '{print $2}')
 					# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
 					if [[ $(echo $line | awk '{print $3}') == "+" ]]
 					then							
@@ -77,14 +77,14 @@ do
 						then
 							# determine the nearest intron-exon junction beyond the breakpoint. if the gene is on the positive strand and the fragment is GENE-TE, then the next non-TE exon is located downstream (the smallest positive value in the bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$8}}' | head -n1)
-							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps beyond the next exon junction.
-							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							# first, get all reads that map in region1																											  | next, extract (and count) reads where mate maps beyond the next exon junction.
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$length_mode" '{ if($7 == "=" && $8>=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]
 						then
 							# if fragment is TE-GENE, then the "next" intron-exon junction is upstream of the breakpoint ( the smallest NEGATIVE value in the bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$9}}' | head -n1)
 							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps before the next exon junction.
-							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$length_mode" '{ if($7 == "=" && $8+lm<=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						fi
 					elif [[ $(echo $line | awk '{print $3}') == "-" ]]
 					then 
@@ -93,11 +93,11 @@ do
 							# if the gene is on the negative strand	and the fragment is GENE-TE, then the next non-TE exon is upstream of breakpoint (BUT: TAKE smallest POSITIVE value in bedtools closest output)
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$9}}' | head -n1)
 							# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps upstream to the next exon junction.
-							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8+60<=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$length_mode" '{ if($7 == "=" && ne!= "" && $8+lm<=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"
 						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]
 						then
 							next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$8}}' | head -n1)
-							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" '{ if($7 == "=" && ne!= "" && $8>=ne && $6 == "60M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"	
+							samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"/"$SNa"_S"$snum"_L"$l"_STAR/"$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$length_mode" '{ if($7 == "=" && ne!= "" && $8>=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_S"$snum"_out4_genereads"	
 						fi
 					fi
 				done
