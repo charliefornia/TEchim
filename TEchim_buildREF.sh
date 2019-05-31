@@ -36,7 +36,8 @@ cd $REFpath
 awk '{if($1 !~ ">") {a=length($1); print a}}' $TElist > tmp.TElengths
 awk '{if($1 ~ ">") {gsub(/>/,""); print $1}}' $TElist > tmp.TEnames
 paste tmp.TElengths tmp.TEnames > tmp.TEcomb
-awk '{print "TEchr_"$2"\t0\t"$1"\t"$2}' tmp.TEcomb > $TElist".bed"
+awk '{print "TEchr_"$2"\t0\t"$1"\t"$2"\t.\t+"}' tmp.TEcomb > $TElist".bed"
+awk '{print "TEchr_"$2"\t0\t"$1"\tNEG_"$2"\t.\t-"}' tmp.TEcomb >> $TElist".bed"
 rm tmp.TE*
 
 # use repeatmasker to mask any sequence in the reference genome that looks like a transposon
@@ -137,5 +138,5 @@ cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmi
 bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name > "tmp."$REFbase".filtered_CDS.fasta"
 makeblastdb -dbtype nucl -in $REFbase".fa"
 blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -c | awk '{if($1 = "1") print $2}' > "tmp."$REFbase".use_these_CDS.tsv"
-awk '{a=$1; gsub(/::/,"\t"); gsub(/:/,"\t",$2); gsub(/-/,"\t",$2); print $2"\t"$3"\t"$4"\t"a}' "tmp."$REFbase".use_these_CDS.tsv" > $REFbase".CDS_for_IGE.bed"
+awk '{OFS="\t"} {gsub(/@|:/,"\t"); gsub(/"|;/,""); gsub(/-/,"\t",$5); print $4"\t"$5-1"\t"$6"\t"$1"@"$2"@"$4"-"$5":"$6"\t.\t"$3}' "tmp."$REFbase".use_these_CDS.tsv" > $REFbase".CDS_for_IGE.bed"
 rm "tmp."$REFbase*
