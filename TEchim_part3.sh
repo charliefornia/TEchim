@@ -87,7 +87,7 @@ create_IGE_reference()
 	# copy original reference genome (this is necessary because RepeatMasker changes current files)
 	cp $REFpath$REFbase".fa" "./tmp."$REFbase".fa"
 	# run RepeatMasker using newly created CDS fasta file as "TE", then remove unnecessary output
-	RepeatMasker -lib $SNa"_IGEref.TEs.fa" -no_is -nolow -s -pa $nc "./"$REFbase".fa"
+	RepeatMasker -lib $SNa"_IGEref.TEs.fa" -no_is -nolow -s -pa $nc "./tmp."$REFbase".fa"
 	rm "./tmp."$REFbase".fa"
 	rm $REFbase".fa.cat.gz"
 	rm $REFbase".fa.ori.out"
