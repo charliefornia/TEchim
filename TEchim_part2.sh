@@ -151,6 +151,11 @@ split_TE_breakpoints()
 add_expression_levels()
 {
 	echo " --> start adding expression levels at ... $(date)" >> $SNa"_PART2_"$logname".log"
+	# get length of aligned files - here only the first 1000 reads from the first alignment file is consiedered
+	# get the name of the first sample
+	first_file_name=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | head -n1)
+	# get first 1000 aligned reads																												| print length of sequences		 | sort in descending order and | take top
+	length_mode=$(samtools view $path_to_PART1_output$first_file_name"/"$first_file_name"_STAR/"$first_file_name"_out4_Aligned.sortedByCoord.out.bam" | head -n1000 | awk '{a=length($10); print a}' | sort -rn | head -n1)
 	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}')
 	while read line
 	do
