@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ################################################################################
-# TITLE: TEchim - detection of TE-gene chimera in RNA-seq data
-# VERSION: 0.1.3 (dev)
+# TITLE: TEchim - PART 1
+# VERSION: 0.2.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 28/05/2019 (dd/mm/yyyy)
+# DATE: 04/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This tool converts paired-end  OR single reads to in-silico
 # pairs, which are then screened for pairs where one mate maps in the genome and
 # the other on a transposon. The contigs of these read pairs are then used to 
@@ -42,7 +42,7 @@ fastalength=60					# length of in-silico FASTA - must be < 1/2 of
 
 merge_reads()
 {
-	echo " --> start merging at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " --> start merging at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	FQ1=$1
 	FQ2=$2
 	flash $FQ1 $FQ2 \
@@ -60,13 +60,13 @@ merge_reads()
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.hist"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.histogram"
-	echo " <-- done with merging at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " <-- done with merging at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 create_fasta()
 { 
-	echo " --> start generating cropped FASTA at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " --> start generating cropped FASTA at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	# for the following awk commands, the reads will be filtered. only reads
 	# containing at least 2 x $fastalength are kept. this is to avoid overlap when taking $fastalength
 	# nucleotides from each end. 
@@ -93,7 +93,7 @@ create_fasta()
 	paste -d'\n' a_m1.2 b_m1.2 c_m1.1 d_m1.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
 	paste -d'\n' a_m1.2 b_m1.3 c_m1.1 d_m1.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
 	if [ -n $2 ]; then
-		echo " ------ two FASTA files were used" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+		echo " ------ two FASTA files were used" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		# reads used here: _2.fastq.gz reads (2)
 		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print a}}' <(gzip -dc $2) > a_2.1
 		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print b}}' <(gzip -dc $2) > b_2.1
@@ -127,7 +127,7 @@ create_fasta()
 				rev b_2.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_2.4
 				# combine _m1 and _2 sequences
 				cat b_m1.1 b_2.4 > b_m12.1
-				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				;;
 			2)
 				# create reverse-complement of the _m1 sequences. this means that the long reads
@@ -135,10 +135,10 @@ create_fasta()
 				rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m1.4
 				# combine _m1 and _2 sequences
 				cat b_m1.4 b_2.1 > b_m12.1
-				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				;;
 			*)
-				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				rm a_*
 				rm b_*
 				rm c_*
@@ -147,7 +147,7 @@ create_fasta()
 				;;
 		esac
 	else
-		echo " ------ one FASTA file was used" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+		echo " ------ one FASTA file was used" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		# take the only available read names
 		cat a_m1.2 | sed 's/ .*//' > a_m12.1
 		case $stranded in
@@ -156,16 +156,16 @@ create_fasta()
 				# will represent the actual nucleotide sequence of the mRNA strand
 				# combine _m1 and _2 sequences
 				cat b_m1.1 > b_m12.1
-				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				;;
 			2)
 				# create reverse-complement of the _m1 sequences. this means that the long reads
 				# will represent the actual nucleotide sequence of the mRNA strand
 				rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m12.1
-				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				;;
 			*)
-				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 				rm a_*
 				rm b_*
 				rm c_*
@@ -182,14 +182,14 @@ create_fasta()
 	rm b_*
 	rm c_*
 	rm d_*
-	echo " ------ in-silico FASTA contain $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo " <-- done with generating FASTA at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " ------ in-silico FASTA contain $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " <-- done with generating FASTA at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 align_and_filter()
 {
-	echo " --> start mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " --> start mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	# run STAR in chimera-mode
 	STAR --runThreadN $nc \
 		--genomeDir $REFpath"STAR_"$REFbase \
@@ -204,18 +204,18 @@ align_and_filter()
 	mkdir $SNa"_S"$SNo"_L"$LNo"_STAR"
 	mv $SNa"_S"$SNo"_L"$LNo$"_out4"* $SNa"_S"$SNo"_L"$LNo"_STAR"/.
 	if [ ! -s $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" ]; then
-		echo " #### ERROR: file does not have any TE-GENE brakpoint spanning reads!" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+		echo " #### ERROR: file does not have any TE-GENE brakpoint spanning reads!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		exit
 	fi
-	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | awk '{print $1}') reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | awk '{print $1}') reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 blast_on_longreads ()
 {
-	echo " --> start BLAST at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " --> start BLAST at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	# extract readnames and remove duplicates
 	awk '{print $1}' $1 | sort | uniq > $SNa"_S"$SNo"_L"$LNo$"_out6_TExGENES_readnames.txt"
 	# combine readnames with long sequences stored in the lookup file
@@ -240,16 +240,16 @@ blast_on_longreads ()
 	done < $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
 	# remove reads that did not give BLAST result
 	grep -v no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv"
-	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
-	echo " <-- done with BLAST at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " <-- done with BLAST at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 create_summary_table ()
 {
-	echo " --> start creating summary table at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " --> start creating summary table at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	# determine whether the section that maps to the genome is the 5' or the 3' end
 	# of the mRNA section:
 	# 5'-######|GENE|TE|######-3' => PART5
@@ -290,8 +290,8 @@ create_summary_table ()
 	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out10_breakpoints.bed"
 	#paste -d'\t' $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" tmpfile.breakpoint.chr.end tmpfile.breakpoint.TE tmpfile.uncertainty > $SNa"_S"$SNo"_L"$LNo$"_out11_combined_results.tsv" &&
 	rm tmpfile.*
-	echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-	echo "================================" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "================================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 ################################################################################
@@ -307,21 +307,21 @@ fi
 cd $SNa"_S"$SNo"_L"$LNo
 # create .log file
 logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
-echo "====================" > $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "|| TEchim v 0.1.3 || " >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "====================" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Parameters:" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "FASTQ _2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo " => $(zcat < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Sample number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Sequencing lane number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Reference files:" "$REFpath$REFbase" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "Length of in-silico reads:" "$fastalength""nt">> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo " --> starting at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
-echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+echo "====================" > $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "|| TEchim - PART1 || " >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "====================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Parameters:" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "FASTQ _2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo " => $(zcat < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Sample number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Sequencing lane number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Reference files:" "$REFpath$REFbase" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "Length of in-silico reads:" "$fastalength""nt">> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo " --> starting at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 
 if [ -f "$FASTQ2" ]; then
 	merge_reads $FASTQ1 $FASTQ2
@@ -330,7 +330,7 @@ if [ -f "$FASTQ2" ]; then
 elif [ -f "$FASTQ1" ]; then
 	create_fasta $FASTQ1
 else
-	echo " #### ERROR: At least one FASTQ input is required!" >> $SNa"_S"$SNo"_L"$LNo"_"$logname".log"
+	echo " #### ERROR: At least one FASTQ input is required!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	exit
 fi
 
@@ -341,3 +341,5 @@ blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" $SNa"_S"$SNo"_L"$LN
 
 create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" &&\
 	rm $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv"
+
+echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
