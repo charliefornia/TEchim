@@ -128,6 +128,7 @@ check_for_splicesites()
 		else
 			c="N/A"
 		fi
+		if [[ $c = "" ]]; then c="."; fi
 		# the loop aboce created the unix variable $c. here, this variable is appended to the main file.
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$SNa"_out13.bed"
