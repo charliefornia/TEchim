@@ -81,7 +81,7 @@ combine_hits_of_each_TE()
 			while read GENE
 			do
 				# create output file that contains for every gene all the insertions of that TE
-				awk -v g="$GENE" '{if ($12 ~ g && g !~ $4) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+				awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
 			done < "tmp."$SNa"_"$TE"_out11_genes.tsv"
 			rm -f "tmp."$SNa"_"$TE*
 		fi
