@@ -265,7 +265,7 @@ create_summary_table ()
 	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.breakpoint.TE
 	# determine the overlap between the two mapped sections of the long read
 	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" > tmpfile.uncertainty
-	if [ $stranded = "0" ]; then
+	if [[ $stranded = "0" ]]; then
 		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 			a = $11
 			gsub(/TEchr_/,"",a)
