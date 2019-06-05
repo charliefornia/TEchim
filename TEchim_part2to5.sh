@@ -32,7 +32,7 @@ REFbase=dmel625					# same name as in _buildREF
 process_P1out_TE()
 {
 	cd $wd
-	echo " --> start processing PART1 output for TE at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start processing PART1 output for TE at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	cat $1 | bedtools sort -i - > $SNa"_in10_combined.sorted.bed"
 	bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
 	# separate | delimited field
@@ -48,14 +48,14 @@ process_P1out_TE()
 	wc_predup=$(wc -l $SNa"_out03pre_TEbase.tsv" | awk '{print $1}')
 	# remove duplicate reads (where both :A and :B version of the same reads were picked up
 	awk '!seen[$21]++' $SNa"_out03pre_TEbase.tsv" > $SNa"_out03_TEbase.tsv" && rm $SNa"_out03pre_TEbase.tsv"
-	echo " ---- $(wc -l $SNa"_out03_TEbase.tsv" | awk '{print $1}') TE reads ($wc_predup before removing duplicates)" >> $SNa"_PART2to5_"$logname".log"
-	echo " <-- done processing PART1 output for TE at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " ---- $(wc -l $SNa"_out03_TEbase.tsv" | awk '{print $1}') TE reads ($wc_predup before removing duplicates)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done processing PART1 output for TE at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 combine_hits_of_each_TE()
 {
 	cd $wd
-	echo " --> start combining TE reads at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start combining TE reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# create list of all TEs in dataset
 	cut -f20 $1 | sort | uniq > $SNa"_out03a_uniqueTEs.tsv"
 	# to create collection file, first make sure this file does not yet exist
@@ -96,13 +96,13 @@ combine_hits_of_each_TE()
 	grep . $SNa"_out12_OUTPUT.tsv" > $SNa"_out12a_OUTPUT.tsv"
 	rm $SNa"_out03a_uniqueTEs.tsv"
 	rm $SNa"_out03_TEbase.tsv"
-	echo " <-- done combining TE reads at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done combining TE reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 check_for_TE_splicesites()
 {
 	cd $wd
-	echo " --> start checking for TE breaks at splice sites at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start checking for TE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# now, every line is one incident of a gene-TE chimera
 	while read line
 	do
@@ -140,13 +140,13 @@ check_for_TE_splicesites()
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$SNa"_out13.bed"
 	done < $1 > $SNa"_out15.tsv"
-	echo " <-- done checking for TE breaks at splice sites at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done checking for TE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 split_TE_breakpoints()
 {
 	cd $wd
-	echo " --> start tyding up TE breakpoints at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)
 	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $SNa"_newcolb"
 	# for final output, get rid of original TE-breakpoint field
@@ -154,7 +154,7 @@ split_TE_breakpoints()
 	# append pooled TE breakpoints to final output
 	paste $SNa"_newcola" $SNa"_newcolb" > $SNa"_TE_chimericreads_final.tsv"
 	rm $SNa"_newcola" $SNa"_newcolb"
-	echo " <-- done tyding up TE breakpoints at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 add_expression_levels()
@@ -245,7 +245,7 @@ add_expression_levels()
 find_matching_IGEs()
 {
 	cd $wd
-	echo " --> start finding matching IGEs at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start finding matching IGEs at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# randomly subsample filtered CDS (here: take 10%)
 	tenpc_CdS=$(wc -l $REFpath$REFbase".CDS_for_IGE.bed" | awk '{OFMT = "%.0f"; print $1/10}')
 	sort -R $REFpath$REFbase".CDS_for_IGE.bed" | head -n $tenpc_CdS > $SNa"_inputGENEs.bed"
@@ -288,13 +288,13 @@ find_matching_IGEs()
 	# also print a lookup table to link CDS's to the matching TE
 	join <(awk '{print $3"\t"$1"\t"$2"\t"$4}' "tmp."$SNa"_out35_TEmatchedCDS.tsv" | sort -t $'\t') <(awk '{print $4"\t"$1"\t"$2"\t"$3"\t"$6}' $SNa"_inputGENEs.bed" | sort -t $'\t') | awk '{print $1"\t"$4"\t"$2"\t"$3}' > $SNa"_IGE_TE_lookup.tsv"
 	rm "tmp."$SNa*
-	echo " <-- done finding matching IGEs at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done finding matching IGEs at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 create_IGE_reference()
 {
 	cd $wd
-	echo " --> start creating IGE reference files at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start creating IGE reference files at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	mkdir $SNa"_IGEref_CONTAINER"
 	cd $SNa"_IGEref_CONTAINER"
 	# get fasta for CDS's
@@ -322,7 +322,7 @@ create_IGE_reference()
 	makeblastdb -dbtype nucl -in $SNa"_IGEref.clean.onlyTEs.fa"
 	makeblastdb -dbtype nucl -in $SNa"_IGEref.clean.noTEs.fa"
 	cd $wd
-	echo " <-- done creating IGE reference files at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done creating IGE reference files at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 align_IGEref_and_filter()
@@ -447,7 +447,7 @@ create_summary_table ()
 process_P1out_IGE()
 {
 	cd $wd
-	echo " --> start processing PART1 output for IGE at ... $(date)" >> $SNa"_PART2to5_"$logname".log"	
+	echo " --> start processing PART1 output for IGE at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"	
 	cat $1 | bedtools sort -i - > $SNa"_IGEref_in10_combined.sorted.bed"
 	bedtools intersect -wa -a $SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_IGEref_out01_genetagged.tsv"
 	# filter reads inside same gene
@@ -465,14 +465,14 @@ process_P1out_IGE()
 	wc_predup=$(wc -l $SNa"_IGEref_out03pre_TEbase.tsv" | awk '{print $1}')
 	# remove duplicate reads (where both :A and :B version of the same reads were picked up
 	awk '!seen[$21]++' $SNa"_IGEref_out03pre_TEbase.tsv" > $SNa"_IGEref_out03_TEbase.tsv" && rm $SNa"_IGEref_out03pre_TEbase.tsv"
-	echo " ---- $(wc -l $SNa"_IGEref_out03_TEbase.tsv" | awk '{print $1}') reads ($wc_predup before removing duplicates)" >> $SNa"_PART2to5_"$logname".log"
-	echo " <-- done processing PART1 output for IGE at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " ---- $(wc -l $SNa"_IGEref_out03_TEbase.tsv" | awk '{print $1}') reads ($wc_predup before removing duplicates)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done processing PART1 output for IGE at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 combine_hits_of_each_IGE()
 {
 	cd $wd
-	echo " --> start combining IGE reads at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start combining IGE reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# create list of all TEs in dataset
 	cut -f20 $1 | sort | uniq > $SNa"_IGEref_out03a_uniqueTEs.tsv"
 	# to create collection file, first make sure this file does not yet exist
@@ -513,12 +513,13 @@ combine_hits_of_each_IGE()
 	grep . $SNa"_IGEref_out12_OUTPUT.tsv" > $SNa"_IGEref_out12a_OUTPUT.tsv"
 	rm $SNa"_IGEref_out03a_uniqueTEs.tsv"
 	rm $SNa"_IGEref_out03_TEbase.tsv"
-	echo " <-- done combining IGE reads at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done combining IGE reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 check_for_IGE_splicesites()
 {
-	echo " --> start checking for IGE breaks at splice sites at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	cd $wd
+	echo " --> start checking for IGE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# now, every line is one incident of a gene-TE chimera
 	while read line
 	do
@@ -556,13 +557,13 @@ check_for_IGE_splicesites()
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$SNa"_IGEref_out13.bed"
 	done < $1 > $SNa"_IGEref_out15.tsv"
-	echo " <-- done checking for IGE breaks at splice sites at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done checking for IGE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 split_IGE_breakpoints()
 {
 	cd $wd
-	echo " --> start tyding up IGE breakpoints at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " --> start tyding up IGE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)
 	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $SNa"_IGE_newcolb"
 	# for final output, get rid of original TE-breakpoint field
@@ -570,7 +571,7 @@ split_IGE_breakpoints()
 	# append pooled TE breakpoints to final output
 	paste $SNa"_IGE_newcola" $SNa"_IGE_newcolb" > $SNa"_IGEref_chimericreads_final.tsv"
 	rm $SNa"_IGE_newcola" $SNa"_IGE_newcolb"
-	echo " <-- done tyding up IGE breakpoints at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+	echo " <-- done tyding up IGE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
 
@@ -582,30 +583,30 @@ split_IGE_breakpoints()
 cd $wd
 # create .log file
 logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
-echo "======================" > $SNa"_PART2to5_"$logname".log"
-echo "|| TEchim - PART2-5 || " >> $SNa"_PART2to5_"$logname".log"
-echo "======================" >> $SNa"_PART2to5_"$logname".log"
-echo "Parameters:" >> $SNa"_PART2to5_"$logname".log"
-echo "Working directory:" "$wd" >> $SNa"_PART2to5_"$logname".log"
-echo "Location of PART1 output:" "$path_to_PART1_output" >> $SNa"_PART2to5_"$logname".log"
-echo "Sample name:" "$SNa" >> $SNa"_PART2to5_"$logname".log"
-echo "Reference files:" "$REFpath$REFbase" >> $SNa"_PART2to5_"$logname".log"
-echo "--------------------------------" >> $SNa"_PART2to5_"$logname".log"
-echo " --> starting at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
-echo "--------------------------------" >> $SNa"_PART2to5_"$logname".log"
+echo "======================" > $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "|| TEchim - PART2-5 || " >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "======================" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "Parameters:" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "Working directory:" "$wd" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "Location of PART1 output:" "$path_to_PART1_output" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "Sample name:" "$SNa" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "Reference files:" "$REFpath$REFbase" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "--------------------------------" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo " --> starting at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo "--------------------------------" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 
 # PART2:
 (process_P1out_TE $path_to_PART1_output$SNa*"/"$SNa*"_out10_breakpoints.bed"
-combine_hits_of_each_TE $SNa"_out03_TEbase.tsv"
-check_for_TE_splicesites $SNa"_out12a_OUTPUT.tsv"
-split_TE_breakpoints $SNa"_out15.tsv"
+combine_hits_of_each_TE $wd"/"$SNa"_out03_TEbase.tsv"
+check_for_TE_splicesites $wd"/"$SNa"_out12a_OUTPUT.tsv"
+split_TE_breakpoints $wd"/"$SNa"_out15.tsv"
 # optional. Only recommended AFTER filtering.
 #add_expression_levels $SNa"_TE_chimericreads_final.tsv"
 ) &
 
 # PART3:
 find_matching_IGEs
-create_IGE_reference $SNa"_IGEs.bed"
+create_IGE_reference $wd"/"$SNa"_IGEs.bed"
 
 # PART4:
 list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}')
@@ -615,15 +616,15 @@ do
 	for LNo in $list_of_lanes
 	do
 		(align_IGEref_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.fasta" 
-		blast_on_longreads $SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
-		create_summary_table $SNa"_IGEref_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv") &
+		blast_on_longreads $wd"/IGE_"$SNa"_"$SNo"_"$LNo"/"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
+		create_summary_table $wd"/IGE_"$SNa"_"$SNo"_"$LNo"/"$SNa"_IGEref_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv") &
 	done
 done
 wait
 
 # PART5:
 process_P1out_IGE $wd"/IGE_"$SNa*"/"$SNa*"_out10_breakpoints.bed"
-combine_hits_of_each_IGE $SNa"_IGEref_out03_TEbase.tsv"
-check_for_IGE_splicesites $SNa"_IGEref_out12a_OUTPUT.tsv"
-split_IGE_breakpoints $SNa"_IGEref_out15.tsv"
-echo " <-- all done at ... $(date)" >> $SNa"_PART2to5_"$logname".log"
+combine_hits_of_each_IGE $wd"/"$SNa"_IGEref_out03_TEbase.tsv"
+check_for_IGE_splicesites $wd"/"$SNa"_IGEref_out12a_OUTPUT.tsv"
+split_IGE_breakpoints $wd"/"$SNa"_IGEref_out15.tsv"
+echo " <-- all done at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
