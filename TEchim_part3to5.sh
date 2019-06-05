@@ -21,11 +21,11 @@
 ################################################################################
 ################################################################################
 # set parameters
-wd=~							# working directory
-path_to_PART1_output=/PATH/TO/OUTPUT/
+wd=~							# working directory (no trailing "/")
+path_to_PART1_output=/PATH/TO/OUTPUT/	# with trailing "/"
 SNa=NAME_OF_EXP					# sample name	
 nc=1							# number of cores
-REFpath=/PATH/TO/REF/			# same path as in _buildREF
+REFpath=/PATH/TO/REF/			# same path as in _buildREF (with trailing "/")
 REFbase=dmel625					# same name as in _buildREF
 ################################################################################
 ################################################################################
@@ -82,8 +82,8 @@ find_matching_IGEs()
 create_IGE_reference()
 {
 	echo " --> start creating IGE reference files at ... $(date)" >> $SNa"_PART3to5_"$logname".log"
-	mkdir $wd$SNa"_IGEref_CONTAINER"
-	cd $wd$SNa"_IGEref_CONTAINER"
+	mkdir $wd"/"$SNa"_IGEref_CONTAINER"
+	cd $wd"/"$SNa"_IGEref_CONTAINER"
 	# get fasta for CDS's
 	bedtools getfasta -fi $REFpath$REFbase".fa" -bed $1 -s -name > $SNa"_IGEref.TEs.fa"
 	# copy original reference genome (this is necessary because RepeatMasker changes current files)
@@ -119,7 +119,7 @@ align_and_filter()
 	echo " --> start mapping at ... $(date)" >> $SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	# run STAR in chimera-mode
 	STAR --runThreadN $nc \
-		--genomeDir $wd$SNa"_IGEref_CONTAINER/STAR_"$SNa"_IGEref" \
+		--genomeDir $wd"/"$SNa"_IGEref_CONTAINER/STAR_"$SNa"_IGEref" \
 		--readFilesIn $1 $2 \
 		--chimSegmentMin 20 \
 		--chimOutType WithinBAM \
@@ -159,9 +159,9 @@ blast_on_longreads ()
 	do	
 		echo "${readname}" > var1
 		echo "${sequence}" > var2
-		echo "${sequence}" | blastn -db $wd$SNa"_IGEref_CONTAINER/"$SNa"_IGEref.clean.noTEs.fa" -outfmt "6 qstart qend sseqid sstart send sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var3		
+		echo "${sequence}" | blastn -db $wd"/"$SNa"_IGEref_CONTAINER/"$SNa"_IGEref.clean.noTEs.fa" -outfmt "6 qstart qend sseqid sstart send sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var3		
 		if ! [ -s var3 ]; then echo "no-hit" > var3; fi
-		echo "${sequence}" | blastn -db $wd$SNa"_IGEref_CONTAINER/"$SNa"_IGEref.clean.onlyTEs.fa" -outfmt "6 qstart qend sseqid sstart send slen sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var4
+		echo "${sequence}" | blastn -db $wd"/"$SNa"_IGEref_CONTAINER/"$SNa"_IGEref.clean.onlyTEs.fa" -outfmt "6 qstart qend sseqid sstart send slen sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var4
 		if ! [ -s var4 ]; then echo "no-hit" > var4; fi
 		
 		##### HERE: if readname sequence == blastn sequence, then discard
@@ -390,6 +390,7 @@ do
 		align_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.fasta" &
 	done
 done
+wait
 	
 list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}')
 for SNo in $list_of_snum
@@ -400,6 +401,7 @@ do
 		blast_on_longreads $SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz" &
 	done
 done
+wait
 
 list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}')
 for SNo in $list_of_snum
@@ -410,6 +412,7 @@ do
 		create_summary_table $SNa"_IGEref_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv" &
 	done
 done
+wait
 
 cd $wd
 # create out10_combined.sorted.bed
