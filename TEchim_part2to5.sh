@@ -147,8 +147,8 @@ split_TE_breakpoints()
 {
 	cd $wd
 	echo " --> start tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)
-	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $SNa"_newcolb"
+	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)	
+	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolb"
 	# for final output, get rid of original TE-breakpoint field
 	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12,$13;}' $SNa"_out15.tsv" > $SNa"_newcola"
 	# append pooled TE breakpoints to final output
@@ -565,7 +565,7 @@ split_IGE_breakpoints()
 	cd $wd
 	echo " --> start tyding up IGE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)
-	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| sed 's/,$//'; done > $SNa"_IGE_newcolb"
+	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_IGE_newcolb"
 	# for final output, get rid of original TE-breakpoint field
 	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12,$13;}' $SNa"_IGEref_out15.tsv" > $SNa"_IGE_newcola"
 	# append pooled TE breakpoints to final output
