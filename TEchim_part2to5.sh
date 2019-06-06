@@ -304,12 +304,12 @@ create_IGE_reference()
 	# run RepeatMasker using newly created CDS fasta file as "TE", then remove unnecessary output
 	RepeatMasker -lib $SNa"_IGEref.TEs.fa" -no_is -nolow -s -pa $nc "./tmp."$REFbase".fa"
 	rm "./tmp."$REFbase".fa"
-	rm $REFbase".fa.cat.gz"
-	rm $REFbase".fa.ori.out"
-	rm $REFbase".fa.out"
-	rm $REFbase".fa.tbl"
+	rm "./tmp."$REFbase".fa.cat.gz"
+	rm "./tmp."$REFbase".fa.ori.out"
+	rm "./tmp."$REFbase".fa.out"
+	rm "./tmp."$REFbase".fa.tbl"
 	# output is a "clean" reference genome, now void of IGE sequences
-	mv $REFbase".fa.masked" $SNa"_IGEref.clean.noTEs.fa"
+	mv "./tmp."$REFbase".fa.masked" $SNa"_IGEref.clean.noTEs.fa"
 	# create FASTA of IGEs where each IGE has chromosome name ">TEchr_..."
 	awk '{if ($1 ~ ">") {gsub(/>/,""); print ">TEchr_"$1"\t"$2"\t"$3} else {print $0}}' $SNa"_IGEref.TEs.fa" > $SNa"_IGEref.clean.onlyTEs.fa"
 	# combine IGE-cleaned reference genome with IGE-fasta file	
