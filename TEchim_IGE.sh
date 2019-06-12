@@ -152,7 +152,7 @@ align_IGEref_and_filter()
 	echo " --> start mapping on IGE reference at ... $(date)" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	# run STAR in chimera-mode
 	STAR --runThreadN $nc \
-		--genomeDir $wd"/"$IGEgroup"_"$SNa"_IGEref_CONTAINER/STAR_"$IGEgroup"_"$SNa"_IGEref" \
+		--genomeDir $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_CONTAINER/STAR_"$IGEgroup"_"$SNa"_IGEref" \
 		--readFilesIn $1 $2 \
 		--chimSegmentMin 20 \
 		--chimOutType WithinBAM \
