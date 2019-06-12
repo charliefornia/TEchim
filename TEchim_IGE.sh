@@ -264,7 +264,7 @@ process_P1out_IGE()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
 	echo " --> start processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"	
-	cat $1 | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed"
+	cat $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"*"_IGE/"$IGEgroup"_"$SNa"_IGEref_"*"_out10_breakpoints.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed"
 	bedtools intersect -wa -a $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
 	# filter reads inside same gene
 	awk '{if ($4 !~ $10) print $0}' $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv"
@@ -307,7 +307,7 @@ combine_hits_of_each_IGE()
 				bedtools merge -i "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out05_TE-GENE.tsv" -c 5,12,13,8,21,3,6,7,17,10 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse -d 20 > "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out06_TE-GENE.tsv"
 			fi
 			awk '{if ($7 == "GENE-TE") print $0;}' "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out04.tsv" > "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out05_GENE-TE.tsv"
-			if [ -s "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out06_GENE-TE.tsv" ]; then
+			if [ -s "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out05_GENE-TE.tsv" ]; then
 				bedtools merge -i "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out05_GENE-TE.tsv" -c 5,12,13,8,21,3,6,7,17,10 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse -d 20 > "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out06_GENE-TE.tsv"
 			fi
 			# COMBINE TE-GENE and GENE-TE
@@ -329,6 +329,7 @@ combine_hits_of_each_IGE()
 	grep . $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv" > $IGEgroup"_"$SNa"_IGEref_out12a_OUTPUT.tsv"
 	rm $IGEgroup"_"$SNa"_IGEref_out03a_uniqueTEs.tsv"
 	rm $IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv"
+	rm $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv"
 	echo " <-- done combining IGE_$IGEgroup reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
@@ -373,6 +374,7 @@ check_for_IGE_splicesites()
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed"
 	done < $1 > $IGEgroup"_"$SNa"_IGEref_out15.tsv"
+	rm $1
 	echo " <-- done checking for IGE_$IGEgroup breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
@@ -387,6 +389,7 @@ split_IGE_breakpoints()
 	# append pooled TE breakpoints to final output
 	paste $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv"
 	rm $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb"
+	rm $1
 	echo " <-- done tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 }
 
@@ -435,7 +438,7 @@ do
 	wait
 
 	# PART5:
-	process_P1out_IGE $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"*"_IGE/"$IGEgroup"_"$SNa"_IGEref_"*"_out10_breakpoints.bed"		
+	process_P1out_IGE		
 	combine_hits_of_each_IGE $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv"
 	check_for_IGE_splicesites $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out12a_OUTPUT.tsv"
 	split_IGE_breakpoints $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out15.tsv"
