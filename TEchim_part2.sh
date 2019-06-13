@@ -213,7 +213,7 @@ check_for_TE_splicesites()
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$SNa"_out13.bed"
 	done < $1 > $SNa"_out15.tsv"
-	rm $SNa"_out12a_OUTPUT.tsv"
+	rm $1
 	echo " <-- done checking for TE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
 
@@ -228,7 +228,7 @@ split_TE_breakpoints()
 	# append pooled TE breakpoints to final output
 	paste $SNa"_newcola" $SNa"_newcolb" > $SNa"_TE_chimericreads_final.tsv"
 	rm $SNa"_newcola" $SNa"_newcolb"
-	rm $SNa"_out15.tsv"
+	rm $1
 	echo " <-- done tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
 
