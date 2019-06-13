@@ -22,7 +22,7 @@
 ################################################################################
 ################################################################################
 # set parameters
-wd=~							# working directory
+wd=$(pwd)						# working directory
 SNa=NAME_OF_EXP					# sample name
 FASTQ1=READS_1.fastq.gz			# input FASTQ file 1 (FULL PATH)
 FASTQ2=READS_2.fastq.gz			# input FASTQ file 2 (FULL PATH)
@@ -41,10 +41,38 @@ fastalength=60					# length of in-silico FASTA - must be < 1/2 of
 
 write_vars()
 {
+	# assign REFbase parameter
+	if [ -e $REFpath"REFERENCE_basename" ]; then
+		REFbase=$(cat $REFpath"REFERENCE_basename")
+	else
+		echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+		exit
+	fi
 	if [ ! -e $wd"/."$SNa"_strandedness" ]; then echo $stranded > $wd"/."$SNa"_strandedness"; fi
 	if [ ! -e $wd"/."$SNa"_samplename" ]; then echo $SNa > $wd"/."$SNa"_samplename"; fi
 	if [ ! -e $wd"/."$SNa"_refpath" ]; then echo $REFpath > $wd"/."$SNa"_refpath"; fi
 	if [ ! -e $wd"/."$SNa"_fastalength" ]; then echo $fastalength > $wd"/."$SNa"_fastalength"; fi
+}
+
+write_logfile()
+{
+	logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
+	echo "====================" > $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "|| TEchim - PART1 || " >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "====================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Parameters:" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Working directory:" "$wd/$SNa"_S"$SNo"_L"$LNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "FASTQ _2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " => $(zcat < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Sample number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Sequencing lane number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Reference files:" "$REFpath$REFbase" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "Length of in-silico reads:" "$fastalength""nt">> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " --> starting at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
 
 merge_reads()
@@ -312,40 +340,14 @@ if [ ! -d $SNa"_S"$SNo"_L"$LNo ]; then
 	mkdir $SNa"_S"$SNo"_L"$LNo
 fi
 cd $SNa"_S"$SNo"_L"$LNo
-# create .log file
-logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
-echo "====================" > $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "|| TEchim - PART1 || " >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "====================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Parameters:" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Working directory:" "$wd/$SNa"_S"$SNo"_L"$LNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "FASTQ _2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo " => $(zcat < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Sample number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Sequencing lane number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Reference files:" "$REFpath$REFbase" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "Length of in-silico reads:" "$fastalength""nt">> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo " --> starting at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 
-# assign REFbase parameter
-if [ -e $REFpath"REFERENCE_basename" ]; then
-	REFbase=$(cat $REFpath"REFERENCE_basename")
-else
-	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-	exit
-fi
-
+write_vars
+write_logfile
 if [ -f "$FASTQ2" ]; then
-	write_vars
 	merge_reads $FASTQ1 $FASTQ2
 	create_fasta $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz" \
 		&& rm $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" && rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz"
 elif [ -f "$FASTQ1" ]; then
-	write_vars
 	create_fasta $FASTQ1
 else
 	echo " #### ERROR: At least one FASTQ input is required!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -353,7 +355,6 @@ else
 fi
 
 align_and_filter $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
-
 blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" &&\
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam"
 

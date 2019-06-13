@@ -92,7 +92,6 @@ write_logfile()
 	echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
 
-
 process_P1out_TE()
 {
 	cd $wd
