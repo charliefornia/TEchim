@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ################################################################################
-# TITLE: TEchim - PART 2-5
+# TITLE: TEchim - IGE
 # VERSION: 0.2.1 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 05/06/2019 (dd/mm/yyyy)
-# DESCRIPTION: This script combines parts 2-5. 
+# DATE: 13/06/2019 (dd/mm/yyyy)
+# DESCRIPTION: This script generates 10 IGE subsamples 
 ################################################################################
 
 ################################################################################
@@ -19,15 +19,74 @@
 ################################################################################
 ################################################################################
 # set parameters
-wd=~							# working directory (no trailing "/")
-path_to_PART1_output=/PATH/TO/OUTPUT/	# with trailing "/"
-SNa=NAME_OF_EXP					# sample name	
+wd=$(pwd)						# working directory (no trailing "/")
+path_to_PART1_output=$wd"/"		# with trailing "/"
 nc=1							# number of cores
-REFpath=/PATH/TO/REF/			# same path as in _buildREF (with trailing "/")
-REFbase=dmel625					# same name as in _buildREF
+REFpath=						# if left empty then REFpath from PART1 is used
 ################################################################################
 ################################################################################
 # functions:
+
+get_variables()
+{
+	# assign sample name
+	if [ -e $path_to_PART1_output"."*"_samplename" ]; then
+		if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
+			SNa=$(cat $path_to_PART1_output"."*"_samplename")
+		else
+			echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
+		fi
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
+		exit
+	fi
+	# assign REFpath parameter
+	if [ -z $REFpath ]; then
+		if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
+			REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
+		else
+			echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath"
+			exit
+		fi
+	fi
+	# assign REFbase parameter
+	if [ -e $REFpath"REFERENCE_basename" ]; then
+		REFbase=$(cat $REFpath"REFERENCE_basename")
+	else
+		echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename"
+		exit
+	fi
+	# check strandedness of input FASTQ
+	if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
+		stranded=$(cat $path_to_PART1_output"."$SNa"_strandedness")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness"
+		exit
+	fi
+	# check readlength of input FASTQ
+	if [ -e $path_to_PART1_output"."$SNa"_fastalength" ]; then
+		fastalength=$(cat $path_to_PART1_output"."$SNa"_fastalength")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_fastalength"
+		exit
+	fi
+}
+
+write_logfile()
+{
+	logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
+	echo "==================" > $wd"/"$SNa"_IGE_"$logname".log"
+	echo "|| TEchim - IGE || " >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "==================" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "Parameters:" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "Working directory:" "$wd" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "Location of PART1 output:" "$path_to_PART1_output" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "Sample name:" "$SNa" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "Reference files:" "$REFpath$REFbase" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "--------------------------------" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo " --> starting at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo "--------------------------------" >> $wd"/"$SNa"_IGE_"$logname".log"
+}
 
 split_CDS()
 {
@@ -72,7 +131,7 @@ calculate_TE_coverage()
 find_matching_IGEs()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
-	echo " --> start finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " --> start finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	# assess how many Samples and Lanes exist - run bedtools mutlicov on each sample/lane
 	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for snum in $list_of_snum
@@ -104,12 +163,12 @@ find_matching_IGEs()
 	# also print a lookup table to link CDS's to the matching TE
 	join <(awk '{print $3"\t"$1"\t"$2"\t"$4}' "tmp."$IGEgroup"_"$SNa"_out35_TEmatchedCDS.tsv" | sort -t $'\t') <(awk '{print $4"\t"$1"\t"$2"\t"$3"\t"$6}' $SNa"_inputGENEs_"$IGEgroup | sort -t $'\t') | awk '{print $1"\t"$4"\t"$2"\t"$3}' > $IGEgroup"_"$SNa"_IGE_TE_lookup.tsv"
 	rm "tmp."$IGEgroup"_"$SNa*
-	echo " <-- done finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 create_IGE_reference()
 {
-	echo " --> start creating IGE_$IGEgroup reference files at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " --> start creating IGE_$IGEgroup reference files at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	cd $wd"/IGE_COLLECTION_"$SNa
 	mkdir $IGEgroup"_"$SNa"_IGEref_CONTAINER"
 	cd $IGEgroup"_"$SNa"_IGEref_CONTAINER"
@@ -138,7 +197,7 @@ create_IGE_reference()
 	makeblastdb -dbtype nucl -in $IGEgroup"_"$SNa"_IGEref.clean.onlyTEs.fa"
 	makeblastdb -dbtype nucl -in $IGEgroup"_"$SNa"_IGEref.clean.noTEs.fa"
 	cd $wd
-	echo " <-- done creating IGE_$IGEgroup reference files at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done creating IGE_$IGEgroup reference files at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 align_IGEref_and_filter()
@@ -263,7 +322,7 @@ create_summary_table ()
 process_P1out_IGE()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
-	echo " --> start processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"	
+	echo " --> start processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"	
 	cat $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"*"_IGE/"$IGEgroup"_"$SNa"_IGEref_"*"_out10_breakpoints.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed"
 	bedtools intersect -wa -a $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
 	# filter reads inside same gene
@@ -281,14 +340,14 @@ process_P1out_IGE()
 	wc_predup=$(wc -l $IGEgroup"_"$SNa"_IGEref_out03pre_TEbase.tsv" | awk '{print $1}')
 	# remove duplicate reads (where both :A and :B version of the same reads were picked up
 	awk '!seen[$21]++' $IGEgroup"_"$SNa"_IGEref_out03pre_TEbase.tsv" > $IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out03pre_TEbase.tsv"
-	echo " ---- $(wc -l $IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv" | awk '{print $1}') reads ($wc_predup before removing duplicates)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-	echo " <-- done processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " ---- $(wc -l $IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv" | awk '{print $1}') reads ($wc_predup before removing duplicates)" >> $wd"/"$SNa"_IGE_"$logname".log"
+	echo " <-- done processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 combine_hits_of_each_IGE()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
-	echo " --> start combining IGE_$IGEgroup reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " --> start combining IGE_$IGEgroup reads at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	# create list of all TEs in dataset
 	cut -f20 $1 | sort | uniq > $IGEgroup"_"$SNa"_IGEref_out03a_uniqueTEs.tsv"
 	# to create collection file, first make sure this file does not yet exist
@@ -330,13 +389,13 @@ combine_hits_of_each_IGE()
 	rm $IGEgroup"_"$SNa"_IGEref_out03a_uniqueTEs.tsv"
 	rm $IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv"
 	rm $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv"
-	echo " <-- done combining IGE_$IGEgroup reads at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done combining IGE_$IGEgroup reads at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 check_for_IGE_splicesites()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
-	echo " --> start checking for IGE_$IGEgroup breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " --> start checking for IGE_$IGEgroup breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	# now, every line is one incident of a gene-TE chimera
 	while read line
 	do
@@ -375,13 +434,13 @@ check_for_IGE_splicesites()
 		rm "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed"
 	done < $1 > $IGEgroup"_"$SNa"_IGEref_out15.tsv"
 	rm $1
-	echo " <-- done checking for IGE_$IGEgroup breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done checking for IGE_$IGEgroup breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 split_IGE_breakpoints()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
-	echo " --> start tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " --> start tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)
 	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $IGEgroup"_"$SNa"_IGE_newcolb"
 	# for final output, get rid of original TE-breakpoint field
@@ -390,7 +449,7 @@ split_IGE_breakpoints()
 	paste $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv"
 	rm $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb"
 	rm $1
-	echo " <-- done tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+	echo " <-- done tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 }
 
 
@@ -400,30 +459,17 @@ split_IGE_breakpoints()
 
 # change to wd
 cd $wd
-# create .log file
-logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
-echo "======================" > $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "|| TEchim - PART2-5 || " >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "======================" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "Parameters:" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "Working directory:" "$wd" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "Location of PART1 output:" "$path_to_PART1_output" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "Sample name:" "$SNa" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "Reference files:" "$REFpath$REFbase" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "--------------------------------" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo " --> starting at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
-echo "--------------------------------" >> $wd"/"$SNa"_PART2to5_"$logname".log"
 
-# PART3:
+get_variables
+write_logfile
 split_CDS
 calculate_TE_coverage
+
 input_letters=$(printf "a\tb\tc\td\te\tf\tg\th\ti\tj")	
 for IGEgroup in $input_letters
 do
 	find_matching_IGEs
 	create_IGE_reference $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEs.bed"
-
-	# PART4:
 	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_snum
 	do
@@ -436,11 +482,9 @@ do
 		done
 	done
 	wait
-
-	# PART5:
 	process_P1out_IGE		
 	combine_hits_of_each_IGE $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out03_TEbase.tsv"
 	check_for_IGE_splicesites $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out12a_OUTPUT.tsv"
 	split_IGE_breakpoints $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_out15.tsv"
 done
-echo " <-- all done at ... $(date)" >> $wd"/"$SNa"_PART2to5_"$logname".log"
+echo " <-- all done at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
