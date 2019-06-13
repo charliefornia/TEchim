@@ -324,11 +324,15 @@ process_P1out_IGE()
 	cd $wd"/IGE_COLLECTION_"$SNa
 	echo " --> start processing PART1 output for IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"	
 	cat $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"*"_IGE/"$IGEgroup"_"$SNa"_IGEref_"*"_out10_breakpoints.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed"
-	bedtools intersect -wa -a $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
+	if [ $stranded = "0" ]; then
+		bedtools intersect -wa -a $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj > $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
+	else
+		bedtools intersect -wa -a $IGEgroup"_"$SNa"_IGEref_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
+	fi
 	# filter reads inside same gene
 	awk '{if ($4 !~ $10) print $0}' $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv"
 	# separate | delimited field
-	sed -e $'s/|/\t/g' $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out02_sepparated.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
+	str '|' '\t' < $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out02_sepparated.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
 	# generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
 	# and create column with BASE readname (no :A or :B)
 		awk 'BEGIN {OFS = "\t"} {
@@ -379,7 +383,11 @@ combine_hits_of_each_IGE()
 			while read GENE
 			do
 				# create output file that contains for every gene all the insertions of that TE
-				awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out09.tsv" >> $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv"
+				if [ $stranded = "0" ]; then
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""unstranded";}' "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out09.tsv" >> $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv"
+				else
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out09.tsv" >> $IGEgroup"_"$SNa"_IGEref_out12_OUTPUT.tsv"
+				fi			
 			done < "tmp."$IGEgroup"_"$SNa"_"$TE"_IGEref_out11_genes.tsv"
 			rm -f "tmp."$IGEgroup"_"$SNa"_"$TE*
 		fi
@@ -407,7 +415,11 @@ check_for_IGE_splicesites()
 		# $b is the gene
 		b=$(echo $line | awk '{print $1}')
 		# intersect with FEATURES file to get all ovelapping features (output is ;-separated)
-		d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+		if [ $stranded = "0" ]; then
+			d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa | awk '{print $10}' | paste -sd ";" -)
+		else
+			d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+		fi
 		# check whether breakpoint on the genome overlaps with splice donor site (in the case of a GENE-TE fragment)
 		# or with splice acceptor site (in the case of a TE-GENE fragment). the REF files _SPLICE_DONORS.bed and 
 		# _SPLICE_ACCEPTORS.bed have a +/- 10nt, but the precise breakpoint is extracted here (which is the sequence
@@ -464,7 +476,6 @@ get_variables
 write_logfile
 split_CDS
 calculate_TE_coverage
-
 input_letters=$(printf "a\tb\tc\td\te\tf\tg\th\ti\tj")	
 for IGEgroup in $input_letters
 do
@@ -477,7 +488,7 @@ do
 		for LNo in $list_of_lanes
 		do
 			(align_IGEref_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.fasta" 
-			blast_on_longreads $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
+			blast_on_longreads $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
 			create_summary_table $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out9_TExGENES_blastedreads.tsv") &
 		done
 	done
