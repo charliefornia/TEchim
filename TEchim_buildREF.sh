@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - build genomes
-# VERSION: 0.1.2 (dev)
+# VERSION: 0.2.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 22/05/2019 (dd/mm/yyyy)
+# DATE: 12/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: Run this once to create necesseary support files
 ################################################################################
 
@@ -31,6 +31,10 @@ nc=10
 
 # change to REF directory
 cd $REFpath
+
+# create file containing REFbase and TElist
+echo $REFbase > REFERENCE_basename
+echo $TElist > REFERENCE_TElist
 
 # create TE.fa.bed file
 awk '{if($1 !~ ">") {a=length($1); print a}}' $TElist > tmp.TElengths
