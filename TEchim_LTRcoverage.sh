@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - quantify chimeras using LTR-spanning reads
-# VERSION: 0.1.3 (dev)
+# VERSION: 0.2.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 29/05/2019 (dd/mm/yyyy)
+# DATE: 13/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This tool measures the difference between LTR-TE vs. LTR-gene
 # breakpoint-spanning contigs
 ################################################################################
@@ -18,44 +18,83 @@
 ################################################################################
 # set parameters
 wd=~
-SNa=NAME_OF_EXP
-REFpath=/PATH/TO/REF/
-REFbase=dmel625
-TElist=TEs.fa
 path_to_PART1_output=/PATH/TO/PART1/OUTPUT/
-NumSam=6
-NumLan=2
+REFpath=
 ################################################################################
 ################################################################################
 
 # change to wd
 cd $wd
 
+# assign sample name
+if [ -e $path_to_PART1_output"."*"_samplename" ]; then
+	if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
+		SNa=$(cat $path_to_PART1_output"."*"_samplename")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
+	fi
+else
+	echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
+	exit
+fi
+
+# assign REFpath parameter
+if [ -z $REFpath ]; then
+	if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
+		REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath"
+		exit
+	fi
+fi
+
+# assign REFbase parameter
+if [ -e $REFpath"REFERENCE_basename" ]; then
+	REFbase=$(cat $REFpath"REFERENCE_basename")
+else
+	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename"
+	exit
+fi
+
+# assign TElist parameter
+if [ -e $REFpath"REFERENCE_TElist" ]; then
+	TElist=$(cat $REFpath"REFERENCE_TElist")
+else
+	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_TElist"
+	exit
+fi
+
+# create list of all LTR TEs
 if [[ -f $REFpath$TElist".list_of_LTR_TE_names.txt" ]]; then :; else awk '{if ($2 == "LTR" && $1 !~ "_LTR") {gsub(/>/,""); print $1}}' $REFpath$TElist > $REFpath$TElist".list_of_LTR_TE_names.txt"; fi
 
-for ((snum=1; snum <= NumSam ; snum++))
+####################################################
+
+list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+for SNo in $list_of_snum
 do
-	for ((l=1; l <= NumLan ; l++))
+	list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+	for LNo in $list_of_lanes
 	do
-	if [[ -f $SNa".LTRinput.S"$snum"_L"$l".sam" ]]; then :; else samtools view $path_to_PART1_output$SNa"_S"$snum"_L"$l"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($3 ~ "TEchr_" && $7 != "=") print $0}' > $SNa".LTRinput.S"$snum"_L"$l".sam"; fi
+		if [[ -f $SNa".LTRinput."$snum"_"$l".sam" ]]; then :; else samtools view $path_to_PART1_output$SNa"_"$snum"_"$l"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($3 ~ "TEchr_" && $7 != "=") print $0}' > $SNa".LTRinput."$snum"_"$l".sam"; fi
 	done		
 done
 
 while read line
 do
 	rm -f "tmp.output.collect_"$line
-	for ((snum=1; snum <= NumSam ; snum++))
-	do	
-		rm -f "tmp.output.S"$snum
-		for ((l=1; l <= NumLan ; l++))
+	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+	for SNo in $list_of_snum
+		rm -f "tmp.output."$snum
+		list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+		for LNo in $list_of_lanes
 		do
-		awk -v te="$line" '{if ($3 == "TEchr_"te"_LTR" && $7 == "TEchr_"te) counta++; else if ($3 == "TEchr_"te"_LTR" && $7 != "TEchr_"te && $7 != "=") countb++} END {print countb"\t"counta}' $SNa".LTRinput.S"$snum"_L"$l".sam" >> "tmp.output.S"$snum
+			awk -v te="$line" '{if ($3 == "TEchr_"te"_LTR" && $7 == "TEchr_"te) counta++; else if ($3 == "TEchr_"te"_LTR" && $7 != "TEchr_"te && $7 != "=") countb++} END {print countb"\t"counta}' $SNa".LTRinput."$snum"_"$l".sam" >> "tmp.output."$snum
 		done
-		awk '{suma+=$1; sumb+=$2;} END {print suma"\t"sumb;}' "tmp.output.S"$snum >> "tmp.output.collect_"$line
-		rm -f "tmp.output.S"$snum		
+		awk '{suma+=$1; sumb+=$2;} END {print suma"\t"sumb;}' "tmp.output."$snum >> "tmp.output.collect_"$line
+		rm -f "tmp.output."$snum		
 	done
 	a=$(cat "tmp.output.collect_"$line | awk '{print $1}' | paste -sd "|" -)
 	b=$(cat "tmp.output.collect_"$line | awk '{print $2}' | paste -sd "|" -)
 	echo $line $a $b
 	rm -f "tmp.output.collect_"$line
-done < $REFpath$TElist".list_of_LTR_TE_names.txt" > $SNa".Samples1to"$NumSam".LTR_TEs.proportion_of_TEvsGENE.tsv"
+done < $REFpath$TElist".list_of_LTR_TE_names.txt" > $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
