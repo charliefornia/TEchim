@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ################################################################################
-# TITLE: TEchim - PART 2-5
+# TITLE: TEchim - PART 2
 # VERSION: 0.2.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 12/06/2019 (dd/mm/yyyy)
+# DATE: 13/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This script combines output from PART1
 ################################################################################
 
@@ -19,12 +19,79 @@
 ################################################################################
 ################################################################################
 # set parameters
-wd=~							# working directory (no trailing "/")
-path_to_PART1_output=/PATH/TO/OUTPUT/	# with trailing "/"
+wd=$(pwd)						# working directory (no trailing "/")
+path_to_PART1_output=$wd"/"		# with trailing "/"
 nc=1							# number of cores (default:1)
+REFpath=						# if left empty then REFpath from PART1 is used
 ################################################################################
 ################################################################################
 # functions:
+
+get_variables()
+{
+	# assign sample name
+	if [ -e $path_to_PART1_output"."*"_samplename" ]; then
+		if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
+			SNa=$(cat $path_to_PART1_output"."*"_samplename")
+		else
+			echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
+		fi
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
+		exit
+	fi
+
+	# assign REFpath parameter
+	if [ -z $REFpath ]; then
+		if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
+			REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
+		else
+			echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath" >> $wd"/"$SNa"_PART2_"$logname".log"
+			exit
+		fi
+	fi
+	
+	# assign REFbase parameter
+	if [ -e $REFpath"REFERENCE_basename" ]; then
+		REFbase=$(cat $REFpath"REFERENCE_basename")
+	else
+		echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $wd"/"$SNa"_PART2_"$logname".log"
+		exit
+	fi
+	
+	# check strandedness of input FASTQ
+	if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
+		stranded=$(cat $path_to_PART1_output"."$SNa"_strandedness")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness" >> $wd"/"$SNa"_PART2_"$logname".log"
+		exit
+	fi
+	
+	# check readlength of input FASTQ
+	if [ -e $path_to_PART1_output"."$SNa"_fastalength" ]; then
+		fastalength=$(cat $path_to_PART1_output"."$SNa"_fastalength")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_fastalength" >> $wd"/"$SNa"_PART2_"$logname".log"
+		exit
+	fi
+}
+
+write_logfile()
+{
+	logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
+	echo "======================" > $wd"/"$SNa"_PART2_"$logname".log"
+	echo "|| TEchim - PART2-5 || " >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "======================" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "Parameters:" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "Working directory:" "$wd" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "Location of PART1 output:" "$path_to_PART1_output" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "Sample name:" "$SNa" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "Reference files:" "$REFpath$REFbase" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo " --> starting at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
+	echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
+}
+
 
 process_P1out_TE()
 {
@@ -258,69 +325,10 @@ add_expression_levels()
 # change to wd
 cd $wd
 
-# assign sample name
-if [ -e $path_to_PART1_output"."*"_samplename" ]; then
-	if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
-		SNa=$(cat $path_to_PART1_output"."*"_samplename")
-	else
-		echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
-	fi
-else
-	echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
-	exit
-fi
-
-# create .log file
-logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
-echo "======================" > $wd"/"$SNa"_PART2_"$logname".log"
-echo "|| TEchim - PART2-5 || " >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "======================" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "Parameters:" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "Working directory:" "$wd" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "Location of PART1 output:" "$path_to_PART1_output" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "Sample name:" "$SNa" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "Reference files:" "$REFpath$REFbase" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo " --> starting at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
-echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
-
-# assign REFpath parameter
-if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
-	REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
-else
-	echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath" >> $wd"/"$SNa"_PART2_"$logname".log"
-	exit
-fi
-
-# assign REFbase parameter
-if [ -e $REFpath"REFERENCE_basename" ]; then
-	REFbase=$(cat $REFpath"REFERENCE_basename")
-else
-	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $wd"/"$SNa"_PART2_"$logname".log"
-	exit
-fi
-
-# check strandedness of input FASTQ
-if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
-	stranded=$(cat $path_to_PART1_output"."$SNa"_strandedness")
-else
-	echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness" >> $wd"/"$SNa"_PART2_"$logname".log"
-	exit
-fi
-
-# check readlength of input FASTQ
-if [ -e $path_to_PART1_output"."$SNa"_fastalength" ]; then
-	fastalength=$(cat $path_to_PART1_output"."$SNa"_fastalength")
-else
-	echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_fastalength" >> $wd"/"$SNa"_PART2_"$logname".log"
-	exit
-fi
-
-
-# PART2:
+get_variables
+write_logfile
 process_P1out_TE
 combine_hits_of_each_TE $wd"/"$SNa"_out03_TEbase.tsv"
-
 if [ $stranded != "0" ]; then
 	check_for_TE_splicesites $wd"/"$SNa"_out12a_OUTPUT.tsv"
 	split_TE_breakpoints $wd"/"$SNa"_out15.tsv"
@@ -329,5 +337,4 @@ if [ $stranded != "0" ]; then
 else
 	split_TE_breakpoints $wd"/"$SNa"_out12a_OUTPUT.tsv"
 fi
-
 echo " <-- all done at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
