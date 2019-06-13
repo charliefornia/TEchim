@@ -40,38 +40,34 @@ get_variables()
 		echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
 		exit
 	fi
-
 	# assign REFpath parameter
 	if [ -z $REFpath ]; then
 		if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
 			REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
 		else
-			echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath" >> $wd"/"$SNa"_PART2_"$logname".log"
+			echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath"
 			exit
 		fi
 	fi
-	
 	# assign REFbase parameter
 	if [ -e $REFpath"REFERENCE_basename" ]; then
 		REFbase=$(cat $REFpath"REFERENCE_basename")
 	else
-		echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $wd"/"$SNa"_PART2_"$logname".log"
+		echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename"
 		exit
 	fi
-	
 	# check strandedness of input FASTQ
 	if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
 		stranded=$(cat $path_to_PART1_output"."$SNa"_strandedness")
 	else
-		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness" >> $wd"/"$SNa"_PART2_"$logname".log"
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness"
 		exit
 	fi
-	
 	# check readlength of input FASTQ
 	if [ -e $path_to_PART1_output"."$SNa"_fastalength" ]; then
 		fastalength=$(cat $path_to_PART1_output"."$SNa"_fastalength")
 	else
-		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_fastalength" >> $wd"/"$SNa"_PART2_"$logname".log"
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_fastalength"
 		exit
 	fi
 }
