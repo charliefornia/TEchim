@@ -2,10 +2,10 @@
 
 ################################################################################
 # TITLE: TEchim - PART 2-5
-# VERSION: 0.2.1 (dev)
+# VERSION: 0.2.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 05/06/2019 (dd/mm/yyyy)
-# DESCRIPTION: This script combines parts 2-5. 
+# DATE: 12/06/2019 (dd/mm/yyyy)
+# DESCRIPTION: This script combines output from PART1
 ################################################################################
 
 ################################################################################
@@ -21,10 +21,7 @@
 # set parameters
 wd=~							# working directory (no trailing "/")
 path_to_PART1_output=/PATH/TO/OUTPUT/	# with trailing "/"
-SNa=NAME_OF_EXP					# sample name	
-nc=1							# number of cores
-REFpath=/PATH/TO/REF/			# same path as in _buildREF (with trailing "/")
-REFbase=dmel625					# same name as in _buildREF
+nc=1							# number of cores (default:1)
 ################################################################################
 ################################################################################
 # functions:
@@ -34,7 +31,11 @@ process_P1out_TE()
 	cd $wd
 	echo " --> start processing PART1 output for TE at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 	cat $path_to_PART1_output$SNa*"/"$SNa*"_out10_breakpoints.bed" | bedtools sort -i - > $SNa"_in10_combined.sorted.bed"
-	bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
+	if [ $stranded = "0" ]; then
+		bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj > $SNa"_out01_genetagged.tsv"
+	else
+		bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
+	fi
 	# separate | delimited field
 	sed -e $'s/|/\t/g' $SNa"_out01_genetagged.tsv" > $SNa"_out02_sepparated.tsv" && rm $SNa"_out01_genetagged.tsv"
 	# generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
@@ -48,6 +49,7 @@ process_P1out_TE()
 	wc_predup=$(wc -l $SNa"_out03pre_TEbase.tsv" | awk '{print $1}')
 	# remove duplicate reads (where both :A and :B version of the same reads were picked up
 	awk '!seen[$21]++' $SNa"_out03pre_TEbase.tsv" > $SNa"_out03_TEbase.tsv" && rm $SNa"_out03pre_TEbase.tsv"
+	rm $SNa"_in10_combined.sorted.bed"
 	echo " ---- $(wc -l $SNa"_out03_TEbase.tsv" | awk '{print $1}') TE reads ($wc_predup before removing duplicates)" >> $wd"/"$SNa"_PART2_"$logname".log"
 	echo " <-- done processing PART1 output for TE at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
@@ -87,13 +89,18 @@ combine_hits_of_each_TE()
 			while read GENE
 			do
 				# create output file that contains for every gene all the insertions of that TE
-				awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+				if [ $stranded = "0" ]; then
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""unstranded";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+				else
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+				fi
 			done < "tmp."$SNa"_"$TE"_out11_genes.tsv"
 			rm -f "tmp."$SNa"_"$TE*
 		fi
 	done < $SNa"_out03a_uniqueTEs.tsv"
 	# remove empty lines
 	grep . $SNa"_out12_OUTPUT.tsv" > $SNa"_out12a_OUTPUT.tsv"
+	rm $SNa"_out12_OUTPUT.tsv"
 	rm $SNa"_out03a_uniqueTEs.tsv"
 	rm $SNa"_out03_TEbase.tsv"
 	echo " <-- done combining TE reads at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
@@ -114,7 +121,11 @@ check_for_TE_splicesites()
 		# $b is the gene
 		b=$(echo $line | awk '{print $1}')
 		# intersect with FEATURES file to get all ovelapping features (output is ;-separated)
-		d=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+		if [ $stranded = "0" ]; then
+			d=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa | awk '{print $10}' | paste -sd ";" -)
+		else
+			d=$(bedtools intersect -a "tmp."$SNa"_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+		fi
 		# check whether breakpoint on the genome overlaps with splice donor site (in the case of a GENE-TE fragment)
 		# or with splice acceptor site (in the case of a TE-GENE fragment). the REF files _SPLICE_DONORS.bed and 
 		# _SPLICE_ACCEPTORS.bed have a +/- 10nt, but the precise breakpoint is extracted here (which is the sequence
@@ -140,6 +151,7 @@ check_for_TE_splicesites()
 		echo $line | awk -v c="$c" -v d="$d" 'BEGIN {OFS=FS = "\t"} { print $0"\t"c"\t"d}'
 		rm "tmp."$SNa"_out13.bed"
 	done < $1 > $SNa"_out15.tsv"
+	rm $SNa"_out12a_OUTPUT.tsv"
 	echo " <-- done checking for TE breaks at splice sites at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
 
@@ -154,6 +166,7 @@ split_TE_breakpoints()
 	# append pooled TE breakpoints to final output
 	paste $SNa"_newcola" $SNa"_newcolb" > $SNa"_TE_chimericreads_final.tsv"
 	rm $SNa"_newcola" $SNa"_newcolb"
+	rm $SNa"_out15.tsv"
 	echo " <-- done tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
 
@@ -250,6 +263,19 @@ add_expression_levels()
 
 # change to wd
 cd $wd
+
+# assign sample name
+if [ -e $path_to_PART1_output"."*"_samplename" ]; then
+	if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
+		SNa=$(cat $path_to_PART1_output"."*"_samplename")
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
+	fi
+else
+	echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
+	exit
+fi
+
 # create .log file
 logname=$(date | awk '{gsub(/\:/,"-",$5); print $4$3$2"_"$5}')
 echo "======================" > $wd"/"$SNa"_PART2_"$logname".log"
@@ -264,12 +290,41 @@ echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
 echo " --> starting at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 echo "--------------------------------" >> $wd"/"$SNa"_PART2_"$logname".log"
 
+# assign REFpath parameter
+if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
+	REFpath=$(cat $path_to_PART1_output"."$SNa"_refpath")
+else
+	echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_refpath" >> $wd"/"$SNa"_PART2_"$logname".log"
+	exit
+fi
+
+# assign REFbase parameter
+if [ -e $REFpath"REFERENCE_basename" ]; then
+	REFbase=$(cat $REFpath"REFERENCE_basename")
+else
+	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $wd"/"$SNa"_PART2_"$logname".log"
+	exit
+fi
+
+# check strandedness of input FASTQ
+if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
+	stranded=$(cat $path_to_PART1_output"."$SNa"_strandedness")
+else
+	echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness" >> $wd"/"$SNa"_PART2_"$logname".log"
+	exit
+fi
+
 # PART2:
 process_P1out_TE
 combine_hits_of_each_TE $wd"/"$SNa"_out03_TEbase.tsv"
-check_for_TE_splicesites $wd"/"$SNa"_out12a_OUTPUT.tsv"
-split_TE_breakpoints $wd"/"$SNa"_out15.tsv"
-# optional. Only recommended AFTER filtering.
-#add_expression_levels $SNa"_TE_chimericreads_final.tsv"
+
+if [ $stranded != "0" ]; then
+	check_for_TE_splicesites $wd"/"$SNa"_out12a_OUTPUT.tsv"
+	split_TE_breakpoints $wd"/"$SNa"_out15.tsv"
+	# optional. Only recommended AFTER filtering.
+	#add_expression_levels $SNa"_TE_chimericreads_final.tsv"
+else
+	split_TE_breakpoints $wd"/"$SNa"_out12a_OUTPUT.tsv"
+fi
 
 echo " <-- all done at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
