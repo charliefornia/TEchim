@@ -4,7 +4,7 @@
 # TITLE: TEchim - PART 1
 # VERSION: 0.2.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 04/06/2019 (dd/mm/yyyy)
+# DATE: 12/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This tool converts paired-end  OR single reads to in-silico
 # pairs, which are then screened for pairs where one mate maps in the genome and
 # the other on a transposon. The contigs of these read pairs are then used to 
@@ -23,22 +23,28 @@
 ################################################################################
 # set parameters
 wd=~							# working directory
+SNa=NAME_OF_EXP					# sample name
 FASTQ1=READS_1.fastq.gz			# input FASTQ file 1 (FULL PATH)
 FASTQ2=READS_2.fastq.gz			# input FASTQ file 2 (FULL PATH)
+SNo=1							# sample number (use integer from 1-n)
+LNo=1							# sequencing lane number (use integer from 1-n)
 stranded=2						# strandedness: (1) FASTQ1 is mRNA strand
 								#				(2) FASTQ2 is mRNA strand (default)
 								#				(0) reads are unstranded
-SNa=NAME_OF_EXP					# sample name	
-SNo=1							# sample number (use integer from 1-n)
-LNo=1							# sequencing lane number (use integer from 1-n)
-nc=1							# number of cores
 REFpath=/PATH/TO/REF/			# same path as in _buildREF
-REFbase=dmel625					# same name as in _buildREF
+nc=1							# number of cores (default: 1)
 fastalength=60					# length of in-silico FASTA - must be < 1/2 of
-								# input read-length
+								# input read-length (default: 60)
 ################################################################################
 ################################################################################
 # functions:
+
+write_vars()
+{
+	if [ ! -e $wd"/."$SNa"_strandedness" ]; then echo $stranded > $wd"/."$SNa"_strandedness"; fi
+	if [ ! -e $wd"/."$SNa"_samplename" ]; then echo $SNa > $wd"/."$SNa"_samplename"; fi
+	if [ ! -e $wd"/."$SNa"_refpath" ]; then echo $REFpath > $wd"/."$SNa"_refpath"; fi
+}
 
 merge_reads()
 {
@@ -324,11 +330,21 @@ echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname
 echo " --> starting at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 
+# assign REFbase parameter
+if [ -e $REFpath"REFERENCE_basename" ]; then
+	REFbase=$(cat $REFpath"REFERENCE_basename")
+else
+	echo " #### ERROR: reference path is corrupt - no file named REFERENCE_basename" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	exit
+fi
+
 if [ -f "$FASTQ2" ]; then
+	write_vars
 	merge_reads $FASTQ1 $FASTQ2
 	create_fasta $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz" \
 		&& rm $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" && rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz"
 elif [ -f "$FASTQ1" ]; then
+	write_vars
 	create_fasta $FASTQ1
 else
 	echo " #### ERROR: At least one FASTQ input is required!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
