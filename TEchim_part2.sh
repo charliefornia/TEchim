@@ -174,12 +174,7 @@ add_expression_levels()
 {
 	cd $wd
 	echo " --> start adding expression levels at ... $(date)" >> $SNa"_PART2_"$logname".log"
-	# get length of aligned files - here only the first 1000 reads from the first alignment file is consiedered
-	# get the name of the first sample
-	first_file_name=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | head -n1)
-	# get first 1000 aligned reads																												| print length of sequences		 | sort in descending order and | take top
-	length_mode=$(samtools view $path_to_PART1_output$first_file_name"/"$first_file_name"_STAR/"$first_file_name"_out4_Aligned.sortedByCoord.out.bam" | head -n1000 | awk '{a=length($10); print a}' | sort -rn | head -n1)
-	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}')
+	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	while read line
 	do
 		# check if line in final .tsv has breakpoint near splice site ("." means no)
@@ -209,7 +204,7 @@ add_expression_levels()
 					# make sure collecting file does not yet exist
 					rm -f "tmp."$SNa"_"$snum"_out3_TEreads"
 					rm -f "tmp."$SNa"_"$snum"_out4_genereads"
-					list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | rev | awk '{gsub(/_/,"\t"); print $2"\t"$3}' | grep $snum | awk '{print $2}')
+					list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
 					for lnum in $list_of_lanes
 					do
 						# check if STAR output bam has already been indexed, index if not
