@@ -293,7 +293,7 @@ create_summary_table ()
 			a = $11
 			gsub(/TEchr_/,"",a)
 			if ($8 == "plus") {if ($15=="plus") {b = "forward"} else {b = "reverse"}} else {if ($15 == "plus") { b = "reverse" } else { b = "forward" }}
-			if ($3 < $9) {print $1"|"a"|"b"|GENE-TE|S"s"|L"l} else {print $1"|"a"|"b"|TE-GENE|S"s"|L"l}
+			if ($3 < $9) {print $1"|"a"|"b"|GENE-TE|"s"|"l} else {print $1"|"a"|"b"|TE-GENE|"s"|"l}
 			}' < $1 > tmpfile.readname
 			awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "+"}}' < $1 > tmpfile.breakpoint.chr.strand
 	else
@@ -304,7 +304,8 @@ create_summary_table ()
 		c = $3
 		d = $9
 		e = $1
-		if (c < d) {print e"|"a"|"b"|GENE-TE|S"s"|L"l} else {print e"|"a"|"b"|TE-GENE|S"s"|L"l}
+		if (c < d) {print e"|"a"|"b"|GENE-TE|"s"|"l} else {print e"|"a"|"b"|TE-GENE|"s"|
+		"l}
 		}' < $1 > tmpfile.readname
 		awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $1 > tmpfile.breakpoint.chr.strand
 	fi
@@ -332,7 +333,7 @@ process_P1out_IGE()
 	# filter reads inside same gene
 	awk '{if ($4 !~ $10) print $0}' $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv"
 	# separate | delimited field
-	str '|' '\t' < $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out02_sepparated.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
+	tr '|' '\t' < $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out02_sepparated.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
 	# generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
 	# and create column with BASE readname (no :A or :B)
 		awk 'BEGIN {OFS = "\t"} {
