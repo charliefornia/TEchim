@@ -24,7 +24,7 @@ TElist=TEs.fa
 nc=10
 # REFpath directory must contain:
 #     - REFbase.fa (reference genome)
-#     - REFbase.gtf
+#     - REFbase.gtf (chromosome names must match REFbase.fa)
 #     - TEs.fa (TE consensus sequences in fasta format)
 ################################################################################
 ################################################################################
@@ -134,7 +134,6 @@ cat $REFbase".gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); if
 bedtools sort -i "tmp."$REFbase"_FEATURES.bed" > $REFbase"_FEATURES.bed"
 bedtools sort -i $REFbase"_INTRONS.gtf" | tr ';' '\t' | awk 'BEGIN {OFS = "\t"} {gsub(/\"/,"",$0); {print $1"\t"$4-1"\t"$5"\t"$3"|"$10"|"$14"\t"$6"\t"$7}}' >> $REFbase"_FEATURES.bed"
 rm "tmp."$REFbase*
-
 
 # GENERATE support files for IGE
 tmp_TEmin=$(grep -v ">" $TElist | awk '{l=length($1); print l}' | sort -n | head -n1)
