@@ -69,11 +69,11 @@ if [[ -f $REFpath$TElist".list_of_LTR_TE_names.txt" ]]; then :; else awk '{if ($
 
 ####################################################
 
-list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
-for SNo in $list_of_snum
+list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+for SNo in $list_of_SNo
 do
-	list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-	for LNo in $list_of_lanes
+	list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+	for LNo in $list_of_LNo
 	do
 		if [[ -f "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam" ]]; then :; else samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($3 ~ "TEchr_" && $7 != "=") print $0}' > "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam"; fi
 	done		
@@ -85,12 +85,12 @@ echo TE$'\t'LTR-gene$'\t'LTR-TE > $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
 while read line
 do
 	rm -f "tmp.output.collect_"$line
-	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
-	for SNo in $list_of_snum
+	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+	for SNo in $list_of_SNo
 	do
 		rm -f "tmp.output."$SNo
-		list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-		for LNo in $list_of_lanes
+		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+		for LNo in $list_of_LNo
 		do
 			awk -v te="$line" '{if ($3 == "TEchr_"te"_LTR" && $7 == "TEchr_"te) counta++; else if ($3 == "TEchr_"te"_LTR" && $7 != "TEchr_"te && $7 != "=") countb++} END {print countb"\t"counta}' "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam" >> "tmp.output."$SNo
 		done
