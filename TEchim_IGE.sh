@@ -106,19 +106,19 @@ calculate_TE_coverage()
 {
 	cd $wd
 	# create list with all sample numbers in PART1 output
-	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
-	for snum in $list_of_snum
+	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+	for SNo in $list_of_SNo
 	do
 		# create list with lane numbers for each sample in PART1 output
-		list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-		for lnum in $list_of_lanes
+		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+		for LNo in $list_of_LNo
 		do
 			# check if .bam file is indexed, if not then index it
-			if [[ ! -f $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam.bai" ]]; then samtools index $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam"; fi
+			if [[ ! -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]]; then samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam"; fi
 			# quantify coverage of TEs in each sample/lane - this line will print the number
-			bedtools multicov -bams $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam" -bed $REFpath"TEs.fa.bed" -s | awk '{print $7}' > "tmp."$SNa"_"$snum"_"$lnum"_out31_TEcoverage_perSample.tsv"
+			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $REFpath"TEs.fa.bed" -s | awk '{print $7}' > "tmp."$SNa"_"$SNo"_"$LNo"_out31_TEcoverage_perSample.tsv"
 			# this line will print the TE name - only has to be done once (hence the if statement)
-			if [[ ! -f "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv" ]]; then bedtools multicov -bams $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam" -bed $REFpath"TEs.fa.bed" -s | awk '{print $4}' > "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv"; fi
+			if [[ ! -f "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv" ]]; then bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $REFpath"TEs.fa.bed" -s | awk '{print $4}' > "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv"; fi
 		done
 	done
 	# combine all TE coverage numbers					  | calculate average, round to full integer
@@ -133,18 +133,18 @@ find_matching_IGEs()
 	cd $wd"/IGE_COLLECTION_"$SNa
 	echo " --> start finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
 	# assess how many Samples and Lanes exist - run bedtools mutlicov on each sample/lane
-	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
-	for snum in $list_of_snum
+	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+	for SNo in $list_of_SNo
 	do
-		list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-		for lnum in $list_of_lanes
+		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+		for LNo in $list_of_LNo
 		do
 			# check if .bam file is indexed, if not then index it
-			if [[ ! -f $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam.bai" ]]; then samtools index $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam"; fi
+			if [[ ! -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]]; then samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam"; fi
 			# quantify coverage of CDS (subsample) in each sample/lane - this line will print the number
-			bedtools multicov -bams $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam" -bed $SNa"_inputGENEs_"$IGEgroup -s | awk '{print $7}' > "tmp."$IGEgroup"_"$SNa"_"$snum"_"$lnum"_out31_GENEcoverage_perSample.tsv"
+			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $SNa"_inputGENEs_"$IGEgroup -s | awk '{print $7}' > "tmp."$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_out31_GENEcoverage_perSample.tsv"
 			# this line will print the GENE names - only has to be done once (hence the if statement)
-			if [[ ! -f "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv" ]]; then bedtools multicov -bams $path_to_PART1_output$SNa"_"$snum"_"$lnum"/"$SNa"_"$snum"_"$lnum"_STAR/"$SNa"_"$snum"_"$lnum"_out4_Aligned.sortedByCoord.out.bam" -bed $SNa"_inputGENEs_"$IGEgroup -s | awk '{print $4}' > "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv"; fi	
+			if [[ ! -f "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv" ]]; then bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $SNa"_inputGENEs_"$IGEgroup -s | awk '{print $4}' > "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv"; fi	
 		done
 	done
 	# combine all GENE coverage numbers						| calculate average, round to full integer
@@ -482,11 +482,11 @@ for IGEgroup in $input_letters
 do
 	find_matching_IGEs
 	create_IGE_reference $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEs.bed"
-	list_of_snum=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
-	for SNo in $list_of_snum
+	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
+	for SNo in $list_of_SNo
 	do
-		list_of_lanes=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-		for LNo in $list_of_lanes
+		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+		for LNo in $list_of_LNo
 		do
 			(align_IGEref_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.fasta" 
 			blast_on_longreads $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
