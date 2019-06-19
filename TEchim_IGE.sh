@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - IGE
-# VERSION: 0.2.1 (dev)
+# VERSION: 0.2.2 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 13/06/2019 (dd/mm/yyyy)
+# DATE: 19/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This script generates 10 IGE subsamples 
 ################################################################################
 
@@ -336,7 +336,7 @@ process_P1out_IGE()
 	tr '|' '\t' < $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" > $IGEgroup"_"$SNa"_IGEref_out02_sepparated.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01a_filtered_genetagged.tsv" && rm $IGEgroup"_"$SNa"_IGEref_out01_genetagged.tsv"
 	# generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
 	# and create column with BASE readname (no :A or :B)
-		awk 'BEGIN {OFS = "\t"} {
+	awk 'BEGIN {OFS = "\t"} {
 		a = $5
 		gsub(/_LTR/,"",a)
 		c = substr($4, 1, length($4)-2)
@@ -460,6 +460,7 @@ split_IGE_breakpoints()
 	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12,$13;}' $IGEgroup"_"$SNa"_IGEref_out15.tsv" > $IGEgroup"_"$SNa"_IGE_newcola"
 	# append pooled TE breakpoints to final output
 	paste $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv"
+	awk '{all=$0; gsub(/@/,"\t"); if($5 !~ $14 && $10 > 1) print all}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv"
 	rm $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb"
 	rm $1
 	echo " <-- done tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
