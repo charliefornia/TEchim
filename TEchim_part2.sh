@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - PART 2
-# VERSION: 0.2.2 (dev)
+# VERSION: 0.2.3 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 13/06/2019 (dd/mm/yyyy)
+# DATE: 24/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This script combines output from PART1
 ################################################################################
 
@@ -21,6 +21,7 @@
 # set parameters
 wd=$(pwd)						# working directory (no trailing "/")
 path_to_PART1_output=$wd"/"		# with trailing "/"
+SNa=
 nc=1							# number of cores (default:1)
 REFpath=						# if left empty then REFpath from PART1 is used
 ################################################################################
@@ -29,17 +30,6 @@ REFpath=						# if left empty then REFpath from PART1 is used
 
 get_variables()
 {
-	# assign sample name
-	if [ -e $path_to_PART1_output"."*"_samplename" ]; then
-		if [ $(cat $path_to_PART1_output"."*"_samplename" | wc -l | awk '{print $1}') = 1 ]; then
-			SNa=$(cat $path_to_PART1_output"."*"_samplename")
-		else
-			echo " #### ERROR: path to output from PART1 is corrupt - more than one file named *_samplename"
-		fi
-	else
-		echo " #### ERROR: path to output from PART1 is corrupt - no file named *_samplename"
-		exit
-	fi
 	# assign REFpath parameter
 	if [ -z $REFpath ]; then
 		if [ -e $path_to_PART1_output"."$SNa"_refpath" ]; then
