@@ -157,7 +157,7 @@ create_fasta()
 		cat a_m1.2 a_2.2 | sed 's/ .*//' > a_m12.1
 		case $stranded in
 			1|0)
-				# create reverse-complement of the _m1 sequences. this means that the long reads
+				# create reverse-complement of the _2 sequences. this means that the long reads
 				# will represent the actual nucleotide sequence of the mRNA strand
 				rev b_2.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_2.4
 				# combine _m1 and _2 sequences
@@ -243,7 +243,7 @@ align_and_filter()
 		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		exit
 	fi
-	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | awk '{print $1}') reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
