@@ -267,14 +267,31 @@ blast_on_longreads ()
 		echo "${readname}" > var1
 		echo "${sequence}" > var2
 		echo "${sequence}" | blastn -db $REFpath$REFbase".clean.noTEs.fa" -outfmt "6 qstart qend sseqid sstart send sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var3		
-		if ! [ -s var3 ]; then echo "no-hit" > var3; fi
+		if ! [ -s var3 ]; then echo "noGENEfound" > var3; fi
 		echo "${sequence}" | blastn -db $REFpath$REFbase".clean.onlyTEs.fa" -outfmt "6 qstart qend sseqid sstart send slen sstrand" -num_alignments 1 -num_threads $nc | head -n 1 > var4
-		if ! [ -s var4 ]; then echo "no-hit" > var4; fi
+		if ! [ -s var4 ]; then echo "noTEfound" > var4; fi
 		paste var1 var2 var3 var4 >> $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
 		rm var*
 	done < $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
-	# remove reads that did not give BLAST result
-	grep -v no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv"
+	# remove reads that did not give BLAST result for genomic location
+	grep -v noGENEfound $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv"
+	# extract reads for which TE has been identified
+	grep -v noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"	
+	# extract the rest of reads for which STAR had identified a TE, but BLAST failed
+	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv"
+	# generate FASTA file to run RepeatMasker
+	awk '{print ">"$1"\n"$2}' $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9c_.for.RepMask.fa"
+	rm -f ./tmp.onlyTEs.sequences.f*
+	cp $REFpath$REFbase".clean.onlyTEs.fa" ./tmp.onlyTEs.sequences.fa
+	RepeatMasker -lib $SNa"_S"$SNo"_L"$LNo$"_out9c_.for.RepMask.fa" -no_is -nolow -s -pa 2 ./tmp.onlyTEs.sequences.fa
+	cat tmp.onlyTEs.sequences.fa.ori.out | tr -d '()' | awk '{if ($9 == "+") {print $10,$12,$13,$5,$6,$7,$7+$8,"plus"} else  if ($9 == "C") {print $10,$14,$13,$5,$6,$7,$7+$8,"minus"}}' > $SNa"_S"$SNo"_L"$LNo$"_out9d_.for.join.fa"
+	rm -f ./tmp.onlyTEs.sequences.f*
+	join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv") <(sort $SNa"_S"$SNo"_L"$LNo$"_out9d_.for.join.fa") | sed 's/ noTEfound / /g' > $SNa"_S"$SNo"_L"$LNo$"_out9e.joined"
+	
+	
+	####### CONTINUE HERE - build step where STAR results are added to those reads where neither BLAST, nor RepeatMasker succesfully identified breakpoints.
+	
+	
 	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
@@ -358,7 +375,7 @@ align_and_filter $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" $SNa"_S"$SNo"_L"$LNo$"_out
 blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" &&\
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam"
 
-create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" &&\
-	rm $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv"
+create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv" &&\
+	rm $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"
 
 echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
