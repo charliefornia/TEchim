@@ -137,11 +137,10 @@ rm "tmp."$REFbase*
 
 # GENERATE support files for IGE
 tmp_TEmin=$(grep -v ">" $TElist | awk '{l=length($1); print l}' | sort -n | head -n1)
-cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" '{if ($3 == "CDS" && $5-$4 > TEmin) {print $1"\t"$4-1"\t"$5"\t"$10"@"$14"@"$7"\t.\t"$7}}' > "tmp."$REFbase".filtered_CDS.tsv"
+cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" 'BEGIN{OFS="\t"}{if ($3 == "CDS" && $5-$4 > TEmin) {for(i=1;i<=NF;i++){if($i ~/gene_id/) geneid=$(i+1)} gsub(/"|;/, "",geneid); print $1,$4-1,$5,geneid"@"$1"@"$4-1"@"$5"@"$7,".",$7}}' > "tmp."$REFbase".filtered_CDS.tsv"
 bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name > "tmp."$REFbase".filtered_CDS.fasta"
 makeblastdb -dbtype nucl -in $REFbase".fa"
-blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -c | awk '{if($1 = "1") print $2}' > "tmp."$REFbase".use_these_CDS.tsv"
-awk '{gsub(/@|:/,"\t"); gsub(/"|;/,""); print $1"\t"$2"\t"$3"\t"$4}' "tmp."$REFbase".use_these_CDS.tsv" > "tmp."$REFbase".cola"
-awk '{gsub(/@|:/,"\t"); gsub(/"|;/,""); print $5}' "tmp."$REFbase".use_these_CDS.tsv" | awk '{gsub(/-/,"\t"); print $0}' > "tmp."$REFbase".colb"
-paste -d "\t" "tmp."$REFbase".cola" "tmp."$REFbase".colb" | awk '{print $4"\t"$5-1"\t"$6"\t"$1"@"$2"@"$4"-"$5":"$6"\t.\t"$3}' > $REFbase".CDS_for_IGE.bed"
+blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -u > "tmp."$REFbase".use_these_CDS.tsv"
+awk 'BEGIN{FS="@"; OFS="\t"} {print $2,$3,$4,$1"@"$2"-"$3":"$4,".",$5}' tmp.dmel625.use_these_CDS.tsv > $REFbase".CDS_for_IGE.bed"
 rm "tmp."$REFbase*
+
