@@ -2,7 +2,7 @@
 
 ################################################################################
 # TITLE: TEchim - PART 1
-# VERSION: 0.2.0 (dev)
+# VERSION: 0.3.0 (dev) - BRANCHED OUT AT THE MOMENT
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
 # DATE: 12/06/2019 (dd/mm/yyyy)
 # DESCRIPTION: This tool converts paired-end  OR single reads to in-silico
