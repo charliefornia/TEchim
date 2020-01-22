@@ -211,6 +211,8 @@ create_fasta()
 	fi
 	# create look-up table and remove "@" at the beginning of the readname
 	paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
+	# create FASTA file from LOOKUP table
+	awk '{print ">"$1"\n"$2}' $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv" > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
 	# LANG=en_EN is a bug-fix to make sort compatible with join
 	LANG=en_EN sort -k 1,1 $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv" | gzip > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" && rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
 	rm a_*
@@ -243,6 +245,11 @@ align_and_filter()
 		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		exit
 	fi
+	# in addition to in-silico reads, run STAR aligner on long reads - NOTE: attribute --chimOutType Junctions <-This creates output file with chimeric reads
+	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa" --chimSegmentMin 20 --chimOutType Junctions --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_"
+	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {if ($1 ~ "TEchr" && $4 !~ "TEchr" ) { print $4,$13,$13+1,$10"|"$1"|"$3"|TE-GENE|"s"|"l"|"$11"|0",".",$6} else if ($4 ~ "TEchr" && $1 !~ "TEchr" ) {print $1,$11,$11+1,$10"|"$4"|"$6"|GENE-TE|"s"|"l"|"$13"|0",".",$3}}' $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_Chimeric.out.junction" | sed 's/ TEchr //g' > $SNa"_S"$SNo"_L"$LNo$"_out10b_additional_breakpoints.bed"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_"*
+	rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
 	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -277,19 +284,18 @@ blast_on_longreads ()
 	grep -v noGENEfound $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv"
 	# extract reads for which TE has been identified
 	grep -v noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"	
+
+	grep -Fvf <(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv") <(cat $SNa"_S"$SNo"_L"$LNo$"_out10b_additional_breakpoints.bed") > $SNa"_S"$SNo"_L"$LNo$"_out10c_additional_unique_breakpoints.bed"
+	
+	# TODO: add out10c in the end
+	#		create additional "reads" without breakpoint info (TE at position X)
+		
+
 	# extract the rest of reads for which STAR had identified a TE, but BLAST failed
 	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv"
-	# generate FASTA file to run RepeatMasker
-	awk '{print ">"$1"\n"$2}' $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9c_.for.RepMask.fa"
-	rm -f ./tmp.onlyTEs.sequences.f*
-	cp $REFpath$REFbase".clean.onlyTEs.fa" ./tmp.onlyTEs.sequences.fa
-	RepeatMasker -lib $SNa"_S"$SNo"_L"$LNo$"_out9c_.for.RepMask.fa" -no_is -nolow -s -pa 2 ./tmp.onlyTEs.sequences.fa
-	cat tmp.onlyTEs.sequences.fa.ori.out | tr -d '()' | awk '{if ($9 == "+") {print $10,$12,$13,$5,$6,$7,$7+$8,"plus"} else  if ($9 == "C") {print $10,$14,$13,$5,$6,$7,$7+$8,"minus"}}' > $SNa"_S"$SNo"_L"$LNo$"_out9d_.for.join.fa"
-	rm -f ./tmp.onlyTEs.sequences.f*
-	join -1 1 -2 1 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv") <(sort $SNa"_S"$SNo"_L"$LNo$"_out9d_.for.join.fa") | sed 's/ noTEfound / /g' > $SNa"_S"$SNo"_L"$LNo$"_out9e.joined"
+
+	# UNDER CONSTRUCTION
 	
-	
-	####### CONTINUE HERE - build step where STAR results are added to those reads where neither BLAST, nor RepeatMasker succesfully identified breakpoints.
 	
 	
 	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
