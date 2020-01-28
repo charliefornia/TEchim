@@ -88,9 +88,10 @@ merge_reads()
 		-t $nc \
 		-q
 	# concatenate reads that were successfully merged with unmerged file _1.fastq
-	# the unmerged file _1.fastq will contain reads that are longer than 119nt,
+	# the unmerged file _1.fastq will contain reads that are longer than 2 x $fastalength,
 	# which can also be used to generate in-silico paired-end reads
-	cat $SNa"_S"$SNo"_L"$LNo$"_out1.extendedFrags.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz" > $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" && \
+	cat $SNa"_S"$SNo"_L"$LNo$"_out1.extendedFrags.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz" > $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz"
+	MaxFragLength=$(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out1.hist" | tail -n1)
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.extendedFrags.fastq.gz"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.hist"
@@ -109,108 +110,73 @@ create_fasta()
 	# (b) sequence; (c) +; (d) quality score.
 	# reads used here: merged (_m) _1.fastq.gz (_1) -> _m1
 	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print a}}' <(gzip -dc $1) > a_m1.1
-	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print b}}' <(gzip -dc $1) > b_m1.1
-	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print c}}' <(gzip -dc $1) > c_m1.1
-	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print d}}' <(gzip -dc $1) > d_m1.1
+	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print b}}' <(gzip -dc $1) > b_m1.2
+	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print c}}' <(gzip -dc $1) > c_m1.2
+	awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print d}}' <(gzip -dc $1) > d_m1.2
 	# add :A to readname of _m1 (This is to not confuse with otherwise
 	# duplicate read names of _2)
 	sed 's/ /:A /g' a_m1.1 > a_m1.2
-	# crop sequences and quality scores ($fastalength) from _m1 which will be used for NEW_1.fasta
-	sed -E "s/(.{$fastalength}).*/\1/" b_m1.1 > b_m1.2
-	sed -E "s/(.{$fastalength}).*/\1/" d_m1.1 > d_m1.2
-	# crop sequences ($fastalength) and generate reverse-complement from _m1 which will be
-	# used for NEW_2.fasta
-	rev b_m1.1 | sed -E "s/(.{$fastalength}).*/\1/" | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m1.3
-	# crop quality scores ($fastalength) and invert from _m1 which will be used for
-	# NEW_2.fasta
-	rev d_m1.1 | sed -E "s/(.{$fastalength}).*/\1/" > d_m1.3
-	# combine in-silico components
-	paste -d'\n' a_m1.2 b_m1.2 c_m1.1 d_m1.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
-	paste -d'\n' a_m1.2 b_m1.3 c_m1.1 d_m1.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
 	if [ -n $2 ]; then
 		echo " ------ two FASTA files were used" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		# reads used here: _2.fastq.gz reads (2)
 		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print a}}' <(gzip -dc $2) > a_2.1
 		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print b}}' <(gzip -dc $2) > b_2.1
-		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print c}}' <(gzip -dc $2) > c_2.1
+		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print c}}' <(gzip -dc $2) > c_2.2
 		awk -v flength="$fastalength" 'BEGIN {OFS = "\n"} {a = $0 ; getline b ; getline c ; getline d ; if (length(b) >= (flength*2)) {print d}}' <(gzip -dc $2) > d_2.1
 		# add :B to readname of _2 (This is to not confuse with otherwise
 		# duplicate read names of _m1)
 		sed 's/ /:B /g' a_2.1 > a_2.2
-		# crop sequences and quality scores ($fastalength) from _2 which will be used for NEW_2.fasta
-		sed -E "s/(.{$fastalength}).*/\1/" b_2.1 > b_2.2
-		sed -E "s/(.{$fastalength}).*/\1/" d_2.1 > d_2.2
-		# crop sequences ($fastalength) and generate reverse-complement from _2 which will be
-		# used for NEW_1.fasta
-		rev b_2.1 | sed -E "s/(.{$fastalength}).*/\1/" | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_2.3
-		# crop quality scores ($fastalength) and invert from _2 which will be used for
-		# NEW_1.fasta
-		rev d_2.1 | sed -E "s/(.{$fastalength}).*/\1/" > d_2.3
-		# combine in-silico components and add to new fasta file
-		paste -d'\n' a_2.2 b_2.3 c_2.1 d_2.3 >> $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
-		paste -d'\n' a_2.2 b_2.2 c_2.1 d_2.2 >> $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
-		# Create a lookup table for long reads. The long read is the ACTUAL nucleotide
-		# sequence of the mRNA molecule (i.e. the "READ_2 from the stranded RNA library
-		# kit)
-		# first combine _m1 and _2 read names. use only the read name (not the tab-separated
-		# additional flag)
-		cat a_m1.2 a_2.2 | sed 's/ .*//' > a_m12.1
-		case $stranded in
-			1|0)
-				# create reverse-complement of the _2 sequences. this means that the long reads
-				# will represent the actual nucleotide sequence of the mRNA strand
-				rev b_2.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_2.4
-				# combine _m1 and _2 sequences
-				cat b_m1.1 b_2.4 > b_m12.1
-				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				;;
-			2)
-				# create reverse-complement of the _m1 sequences. this means that the long reads
-				# will represent the actual nucleotide sequence of the mRNA strand
-				rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m1.4
-				# combine _m1 and _2 sequences
-				cat b_m1.4 b_2.1 > b_m12.1
-				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				;;
-			*)
-				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				rm a_*
-				rm b_*
-				rm c_*
-				rm d_*
-				exit
-				;;
-		esac
+		rev b_2.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_2.2
+		rev d_2.1 > d_2.2
+	
+		cat a_m1.2 a_2.2 > a_m12.1
+		cat b_m1.2 b_2.2 > b_m12.1
+		cat c_m1.2 c_2.2 > c_m12.1
+		cat b_m1.2 d_2.2 > d_m12.1
 	else
-		echo " ------ one FASTA file was used" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-		# take the only available read names
-		cat a_m1.2 | sed 's/ .*//' > a_m12.1
-		case $stranded in
-			1|0)
-				# create reverse-complement of the _m1 sequences. this means that the long reads
-				# will represent the actual nucleotide sequence of the mRNA strand
-				# combine _m1 and _2 sequences
-				cat b_m1.1 > b_m12.1
-				echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				;;
-			2)
-				# create reverse-complement of the _m1 sequences. this means that the long reads
-				# will represent the actual nucleotide sequence of the mRNA strand
-				rev b_m1.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m12.1
-				echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				;;
-			*)
-				echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-				rm a_*
-				rm b_*
-				rm c_*
-				rm d_*
-				exit
-				;;
-		esac	
+		cat a_m1.2 > a_m12.1
+		cat b_m1.2 > b_m12.1
+		cat c_m1.2 > c_m12.1
+		cat b_m1.2 > d_m12.1	
 	fi
-	# create look-up table and remove "@" at the beginning of the readname
-	paste -d'\t' a_m12.1 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
+	# crop sequences and quality scores to $fastalength - for out3_1.fasta
+	sed -E "s/(.{$fastalength}).*/\1/" b_m12.1 > b_m12.2
+	sed -E "s/(.{$fastalength}).*/\1/" d_m12.1 > d_m12.2
+	# crop sequences ($fastalength) and generate reverse-complement - for out3_2.fasta
+	rev b_m12.1 | sed -E "s/(.{$fastalength}).*/\1/" | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m12.3
+	# crop quality scores ($fastalength) and invert - for out3_2.fasta
+	rev d_m12.1 | sed -E "s/(.{$fastalength}).*/\1/" > d_m12.3
+	# Create a in-silico FASTA and lookup table for long reads. in-silico_1.fasta and the long read  of LOOKUP
+	# is the ACTUAL nucleotide sequence of the mRNA molecule 
+	sed 's/ .*//' a_m12.1 > a_m12.2
+	case $stranded in
+		1|0)
+			# combine in-silico components
+			paste -d'\n' a_m12.1 b_m12.2 c_m12.1 d_m12.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
+			paste -d'\n' a_m12.1 b_m12.3 c_m12.1 d_m12.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
+			# create look-up table and remove "@" at the beginning of the readname
+			paste -d'\t' a_m12.2 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
+			echo " ------ the first strand is the mRNA strand (unless input was unstranded)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+			;;
+		2)
+			# combine in-silico components
+			paste -d'\n' a_m12.1 b_m12.2 c_m12.1 d_m12.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
+			paste -d'\n' a_m12.1 b_m12.3 c_m12.1 d_m12.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
+			# create reverse-complement of the _m1 sequences. this means that the long reads
+			# will represent the actual nucleotide sequence of the mRNA strand
+			rev b_m12.1 | grep '^[ATCGN]' /dev/stdin | tr ATCGN TAGCN > b_m12.4
+			paste -d'\t' a_m12.2 b_m12.4 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"		
+			echo " ------ the second strand is the mRNA strand" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+			;;
+		*)
+			echo " #### ERROR: incorrect strandedness: $stranded at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+			rm a_*
+			rm b_*
+			rm c_*
+			rm d_*
+			exit
+			;;
+	esac
 	# create FASTA file from LOOKUP table
 	awk '{print ">"$1"\n"$2}' $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv" > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
 	# LANG=en_EN is a bug-fix to make sort compatible with join
@@ -227,30 +193,37 @@ create_fasta()
 align_and_filter()
 {
 	echo " --> start mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	#### STREAM 1 ####
 	# run STAR in chimera-mode
-	STAR --runThreadN $nc \
-		--genomeDir $REFpath"STAR_"$REFbase \
-		--readFilesIn $1 $2 \
-		--chimSegmentMin 20 \
-		--chimOutType WithinBAM \
-		--outSAMtype BAM SortedByCoordinate \
-		--outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4_"	
-	# extract only hits that cross TE-GENE breakpoints. the awk commands remove
-	# (1) TE-TE reads and (2)&(3) reads that span the TE and it's LTR
-	samtools view $SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam"
+	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $1 $2 --chimSegmentMin 20 --chimOutType WithinBAM --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4_"	
 	mkdir $SNa"_S"$SNo"_L"$LNo"_STAR"
 	mv $SNa"_S"$SNo"_L"$LNo$"_out4"* $SNa"_S"$SNo"_L"$LNo"_STAR"/.
-	if [ ! -s $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" ]; then
+	# extract only hits that cross TE-GENE breakpoints. the awk commands remove
+	# (1) TE-TE reads and (2)&(3) reads that span the TE and it's LTR
+	samtools view $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
+	if [ ! -s $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" ]; then
 		echo " #### ERROR: file does not have any TE-GENE brakpoint spanning reads!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		exit
 	fi
+	#### STREAM 2 ####
+	# Select pairs where both reads map to positive strand
+	samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8"-"$8+mfl"|0",".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4"-"$4+mfl"|0",".","-",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	# Select pairs where read1 maps to positive, and read2 to negative
+	samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {{if ($8-mfl<0) testart=1; else testart=$8-mfl} {print $3,$4,$4+mfl,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"testart"-"$8"|0",".","+",$1}} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4"-"$4+mfl"|0",".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	# Select pairs where read1 maps to negative, and read2 to positive
+	samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8"-"$8+mfl"|0",".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {{if ($4-mfl<0) testart=1; else testart=$4-mfl} {print $7,$8,$8+mfl,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4-mfl"-"$4"|0",".","-",$1}}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	# Select pairs where both reads map to negative strand
+	samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {{if ($8-mfl<0) testart=1; else testart=$8-mfl} {print $3,$4-mfl,$4,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8-mfl"-"$8"|0",".","-",$1}} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {{if ($4-mfl<0) testart=1; else testart=$4-mfl} {print $7,$8-mfl,$8,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4-mfl"-"$4"|0",".","+",$1}}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	bedtools sort -i $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed" > $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	#### STREAM 3 ####
 	# in addition to in-silico reads, run STAR aligner on long reads - NOTE: attribute --chimOutType Junctions <-This creates output file with chimeric reads
-	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa" --chimSegmentMin 20 --chimOutType Junctions --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_"
-	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {if ($1 ~ "TEchr" && $4 !~ "TEchr" ) { print $4,$13,$13+1,$10"|"$1"|"$3"|TE-GENE|"s"|"l"|"$11"|0",".",$6} else if ($4 ~ "TEchr" && $1 !~ "TEchr" ) {print $1,$11,$11+1,$10"|"$4"|"$6"|GENE-TE|"s"|"l"|"$13"|0",".",$3}}' $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_Chimeric.out.junction" | sed 's/ TEchr //g' > $SNa"_S"$SNo"_L"$LNo$"_out10b_additional_breakpoints.bed"
-	rm $SNa"_S"$SNo"_L"$LNo$"_out4a_longreads_"*
+	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa" --chimSegmentMin 20 --chimOutType Junctions --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_"
+	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {if ($1 ~ "TEchr" && $4 !~ "TEchr" ) { print $4,$13,$13+1,$10"|"$1"|"$3"|TE-GENE|S"s"|L"l"|"$11"|0",".",$6} else if ($4 ~ "TEchr" && $1 !~ "TEchr" ) {print $1,$11,$11+1,$10"|"$4"|"$6"|GENE-TE|S"s"|L"l"|"$13"|0",".",$3}}' $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_Chimeric.out.junction" | sed 's/TEchr_//g' | sed 's/|+|/|plus|/g' | sed 's/|-|/|minus|/g' > $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_"*
 	rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
-	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
@@ -283,21 +256,9 @@ blast_on_longreads ()
 	# remove reads that did not give BLAST result for genomic location
 	grep -v noGENEfound $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv"
 	# extract reads for which TE has been identified
-	grep -v noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"	
-
-	grep -Fvf <(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv") <(cat $SNa"_S"$SNo"_L"$LNo$"_out10b_additional_breakpoints.bed") > $SNa"_S"$SNo"_L"$LNo$"_out10c_additional_unique_breakpoints.bed"
-	
-	# TODO: add out10c in the end
-	#		create additional "reads" without breakpoint info (TE at position X)
-		
-
-	# extract the rest of reads for which STAR had identified a TE, but BLAST failed
-	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9b_TExGENES_findTE.tsv"
-
-	# UNDER CONSTRUCTION
-	
-	
-	
+	grep -v noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv"	
+	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" > $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv"
+	join -1 1 -2 7 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv") <(sort -k 7 $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed") | awk 'BEGIN {OFS = "\t"} {if ($8=="plus") {print $5,$6,$7,$13,".","+"} else if ($8=="minus") {print $5,$7,$6,$13,".","-"}}' | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
 	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
@@ -332,7 +293,7 @@ create_summary_table ()
 			}' < $1 > tmpfile.readname
 			awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "+"}}' < $1 > tmpfile.breakpoint.chr.strand
 	else
-	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
+		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 		a = $11
 		gsub(/TEchr_/,"",a)
 		b = $15
@@ -345,8 +306,12 @@ create_summary_table ()
 	fi
 	awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $1 > tmpfile.score
 	paste -d'|' tmpfile.readname tmpfile.breakpoint.TE tmpfile.uncertainty > tmpfile.readname.extended
-	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out10_breakpoints.bed"
-	#paste -d'\t' $1 tmpfile.breakpoint.chr.end tmpfile.breakpoint.TE tmpfile.uncertainty > $SNa"_S"$SNo"_L"$LNo$"_out11_combined_results.tsv" &&
+	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed"
+	# add results from STREAM 2
+	cat $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed"
+	# add results from STREAM 3, making sure no reads are taken twice
+	grep -Fvf <(tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" | awk '{print $4}') <(cat $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed") > $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
+	cat $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed"
 	rm tmpfile.*
 	echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "================================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -378,10 +343,10 @@ else
 fi
 
 align_and_filter $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
-blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam" $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" &&\
-	rm $SNa"_S"$SNo"_L"$LNo$"_out5_TExGENES.sam"
+blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" &&\
+	rm $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
 
-create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv" &&\
+create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv" &&\
 	rm $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"
 
 echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
