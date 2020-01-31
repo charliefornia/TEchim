@@ -88,6 +88,10 @@ process_P1out_TE()
 	else
 		bedtools intersect -wa -a $SNa"_in10_combined.sorted.bed" -b $REFpath$REFbase"_GENES.bed" -loj -s > $SNa"_out01_genetagged.tsv"
 	fi
+	
+	# Also extract those reads that were not inside annotated gene
+	#grep -Fvf <(tr "|" "\t" < $SNa"_in10_combined.sorted.bed" | awk '{print $4}') <(cat $SNa"_out01_genetagged.tsv") > $SNa"_out01b_ReadsOutsideGenes.tsv"
+	
 	# separate | delimited field
 	tr '|' '\t' < $SNa"_out01_genetagged.tsv" > $SNa"_out02_sepparated.tsv" && rm $SNa"_out01_genetagged.tsv"
 	# generate column that contains the "basic" TE name i.e. TE_LTR ==> TE
@@ -123,13 +127,13 @@ combine_hits_of_each_TE()
 			###### SPLIT into TE-GENE and GENE-TE
 			awk '{if ($7 == "TE-GENE") print $0;}' "tmp."$SNa"_"$TE"_out04.tsv" > "tmp."$SNa"_"$TE"_out05_TE-GENE.tsv"
 			# merge, counting unique read NAMES, and allowing for 20nt range of precise insertion site
-			# header: Chr(genome)|Start(genome)|End(genome)|TE|"."|Strand(genome)|NumberOfSamples|NumberOfReads|Breakpoint(genome)|Strand(TE)|TE-GENEorGENE-TE|GeneNames|AllBreakpoints(TE)
+			# header: Chr(genome)|Start(genome)|End(genome)|TE|"."|Strand(genome)|NumberOfSamples|NumberOfReads|Breakpoint(genome)|Strand(TE)|TE-GENEorGENE-TE|GeneNames|AllSamples|AllBreakpoints(TE)
 			if [ -s "tmp."$SNa"_"$TE"_out05_TE-GENE.tsv" ]; then
-				bedtools merge -i "tmp."$SNa"_"$TE"_out05_TE-GENE.tsv" -c 5,12,13,8,21,3,6,7,17,10 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse -d 20 > "tmp."$SNa"_"$TE"_out06_TE-GENE.tsv"
+				bedtools merge -i "tmp."$SNa"_"$TE"_out05_TE-GENE.tsv" -c 5,12,13,8,21,3,6,7,17,8,10 -o distinct,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse,collapse -d 20 > "tmp."$SNa"_"$TE"_out06_TE-GENE.tsv"
 			fi
 			awk '{if ($7 == "GENE-TE") print $0;}' "tmp."$SNa"_"$TE"_out04.tsv" > "tmp."$SNa"_"$TE"_out05_GENE-TE.tsv"
 			if [ -s "tmp."$SNa"_"$TE"_out05_GENE-TE.tsv" ]; then
-				bedtools merge -i "tmp."$SNa"_"$TE"_out05_GENE-TE.tsv" -c 5,12,13,8,21,3,6,7,17,10 -o mode,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse -d 20 > "tmp."$SNa"_"$TE"_out06_GENE-TE.tsv"
+				bedtools merge -i "tmp."$SNa"_"$TE"_out05_GENE-TE.tsv" -c 5,12,13,8,21,3,6,7,17,8,10 -o distinct,mode,mode,count_distinct,count_distinct,mode,mode,mode,distinct,collapse,collapse -d 20 > "tmp."$SNa"_"$TE"_out06_GENE-TE.tsv"
 			fi
 			###### COMBINE TE-GENE and GENE-TE
 			cat "tmp."$SNa"_"$TE"_out06_"*".tsv" > "tmp."$SNa"_"$TE"_out08.tsv"
@@ -142,9 +146,9 @@ combine_hits_of_each_TE()
 			do
 				# create output file that contains for every gene all the insertions of that TE
 				if [ $stranded = "0" ]; then
-					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""unstranded";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$7"\t"$8"\tunstranded\t"$13"\t"$14;}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
 				else
-					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$13"\t"$7"\t"$8"\t""mRNA";}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
+					awk -v g="$GENE" '{if ($12 ~ g && $4 !~ g) print g"\t"$1"\t"$6"\t"$9"\t"$4"\t"$11"\t"$10"\t"$7"\t"$8"\tmRNA\t"$13"\t"$14;}' "tmp."$SNa"_"$TE"_out09.tsv" >> $SNa"_out12_OUTPUT.tsv"
 				fi
 			done < "tmp."$SNa"_"$TE"_out11_genes.tsv"
 			rm -f "tmp."$SNa"_"$TE*
@@ -212,12 +216,13 @@ split_TE_breakpoints()
 	cd $wd
 	echo " --> start tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 	# for better readability, the concatenated breakpoints on the TE are pooled here (with the number of occurrences in brackets)	
-	cat $1 | while read line; do echo $line | awk '{print $8}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolb"
+	cat $1 | while read line; do echo $line | awk '{print $12}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolb"
+	cat $1 | while read line; do echo $line | awk '{print $11}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolc"
 	# for final output, get rid of original TE-breakpoint field
-	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$9,$10,$11,$12,$13;}' $SNa"_out15.tsv" > $SNa"_newcola"
+	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$13,$14}' $SNa"_out15.tsv" > $SNa"_newcola"
 	# append pooled TE breakpoints to final output
-	paste $SNa"_newcola" $SNa"_newcolb" > $SNa"_TE_chimericreads_final.tsv"
-	rm $SNa"_newcola" $SNa"_newcolb"
+	paste $SNa"_newcola" $SNa"_newcolb" $SNa"_newcolc" > $SNa"_TE_chimericreads_final.tsv"
+	rm $SNa"_newcola" $SNa"_newcolb" $SNa"_newcolc"
 	rm $1
 	echo " <-- done tyding up TE breakpoints at ... $(date)" >> $wd"/"$SNa"_PART2_"$logname".log"
 }
