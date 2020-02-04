@@ -53,6 +53,16 @@ get_variables()
 		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness"
 		exit
 	fi
+	
+	if [ -e $path_to_PART1_output"."$SNa"_strandedness" ]; then
+		MaxFragLength=$(sort -nr $path_to_PART1_output"."$SNa"_strandedness" | head -n1)
+	else
+		echo " #### ERROR: path to output from PART1 is corrupt - no file named .""$SNa""_strandedness"
+		exit
+	fi
+	
+	
+	
 	# check readlength of input FASTQ
 	if [ -e $path_to_PART1_output"."$SNa"_fastalength" ]; then
 		fastalength=$(cat $path_to_PART1_output"."$SNa"_fastalength")
@@ -234,74 +244,71 @@ add_expression_levels()
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	while read line
 	do
-		# check if line in final .tsv has breakpoint near splice site ("." means no)
-		if [[ $(echo $line | awk '{print $11}') == "." ]]; then
-			# if breakpoint is not near splice site, copy the line
-			echo $line
-		else
-			# get gene name
-			input_gene=$(echo $line | awk '{print $1}')
-			# get exons of input gene 				  | convert to bed 								  | sort			   | remove duplicate lines			> store as temporary file for this gene
-			grep $input_gene $REFpath$REFbase"_EXONS.gtf" | awk '{print $1"\t"$4-1"\t"$5"\texon\t.\t"$7}' | bedtools sort -i - | awk '!seen[$2$3]++ {print $0}' > "tmp."$SNa"_"$input_gene".all_exons.bed"
-			# create bedfile with chromosomal location of exon-intron junction
-			echo $line | awk '{print $2"\t"$11-1"\t"$11"\t"$1"\t.\t"$3}' > "tmp."$SNa"_out1_breakpoint.bed"
-			# create list with genomic distances of exons to chromosomal breakpoint -strand specific -print distance to (a) -show top 100
-			bedtools closest -s -D a -k 100 -a "tmp."$SNa"_out1_breakpoint.bed" -b "tmp."$SNa"_"$input_gene".all_exons.bed" > "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv"
-			# determine genomic region of exon that constitutes the chromosomal breakpoint (this assumes that the correct exon comes out on top after running bedtools closest) | convert to "region" syntax in samtools
-			region1=$(head -n1 "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{print $7":"$8"-"$9}')
-			# check if $region1 is empty
-			if [[ -z $region1 ]]; then
-				echo $line
-			else
-				# make sure collecting file does not yet exist
-				rm -f "tmp."$SNa"_out5_TEreads"
-				rm -f "tmp."$SNa"_out6_genereads"
-				for SNo in $list_of_SNo
+		breakpoint=$(echo $line | awk '{print $4}')
+		chromosome=$(echo $line | awk '{print $2}')
+		
+		# make sure collecting file does not yet exist
+		rm -f "tmp."$SNa"_out5_TEreads"
+		rm -f "tmp."$SNa"_out6_genereads"
+		
+		for SNo in $list_of_SNo
+			do
+			# make sure collecting file does not yet exist
+			rm -f "tmp."$SNa"_"$SNo"_out3_TEreads"
+			rm -f "tmp."$SNa"_"$SNo"_out4_genereads"
+			list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+			for LNo in $list_of_LNo
 				do
-					# make sure collecting file does not yet exist
-					rm -f "tmp."$SNa"_"$SNo"_out3_TEreads"
-					rm -f "tmp."$SNa"_"$SNo"_out4_genereads"
-					list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-					for LNo in $list_of_LNo
-					do
-						# check if STAR output bam has already been indexed, index if not
-						if [[ -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" ; fi
-						# get number of reads inside region 1 where mate maps onto transposon
-						samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
-						# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
-						if [[ $(echo $line | awk '{print $3}') == "+" ]]; then
-							if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
-								# determine the nearest intron-exon junction beyond the breakpoint. if the gene is on the positive strand and the fragment is GENE-TE, then the next non-TE exon is located downstream (the smallest positive value in the bedtools closest output)
-								next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$8}}' | head -n1)
-								# first, get all reads that map in region1																											  | next, extract (and count) reads where mate maps beyond the next exon junction.
-								samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$fastalength" '{ if($7 == "=" && $8>=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-							elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
-								# if fragment is TE-GENE, then the "next" intron-exon junction is upstream of the breakpoint ( the smallest NEGATIVE value in the bedtools closest output)
-								next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$9}}' | head -n1)
-								# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps before the next exon junction.
-								samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$fastalength" '{ if($7 == "=" && $8+lm<=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-							fi
-						elif [[ $(echo $line | awk '{print $3}') == "-" ]]; then 
-							if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
-								# if the gene is on the negative strand	and the fragment is GENE-TE, then the next non-TE exon is upstream of breakpoint (BUT: TAKE smallest POSITIVE value in bedtools closest output)
-								next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13>0) {print$9}}' | head -n1)
-								# first, get all reads that map in region1																	| next, extract (and count) reads where mate maps upstream to the next exon junction.
-								samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$fastalength" '{ if($7 == "=" && ne!= "" && $8+lm<=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-							elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
-								next_exon=$(cat "tmp."$SNa"_"$input_gene"_out2_exon_breakpoint_distances.tsv" | awk '{if ($13<0) {print$8}}' | head -n1)
-								samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v ne="$next_exon" -v lm="$fastalength" '{ if($7 == "=" && ne!= "" && $8>=ne && $6 == lm"M") {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"	
-							fi
+					# check if STAR output bam has already been indexed, index if not
+					if [[ -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" ; fi
+											
+	
+						
+					# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
+					if [[ $(echo $line | awk '{print $3}') == "+" ]]; then
+						if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
+							
+							
+							
+							
+							
+							
+							
+							
+						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
+				
+				
+							endnt=$(($breakpoint+$MaxFragLength))
+							region1=$(echo $chromosome":"$breakpoint"-"$endnt)
+							samtools view -f 145 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
+							samtools view -f 145 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" '{ if($7 == "=" && $8<breakpoint) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+							
+							#########
+							# CONTINUE HERE - more stringent on gene-gene reads
+							
+							
 						fi
-					done
-					awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out3_TEreads" >> "tmp."$SNa"_out5_TEreads"
-					awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out4_genereads" >> "tmp."$SNa"_out6_genereads"
-				done			
-				col1=$(paste -sd "|" "tmp."$SNa"_out5_TEreads")
-				col2=$(paste -sd "|" "tmp."$SNa"_out6_genereads")
-				echo $line | awk -v c1="$col1" -v c2="$col2" '{print $0"\tTE:"c1"\tGene:"c2}'
-			fi
-			rm -f "tmp."$SNa*
+					elif [[ $(echo $line | awk '{print $3}') == "-" ]]; then 
+						if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
+					
+					
+					
+						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
+						fi
+					fi
+					
+					
+					
+				done
+				awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out3_TEreads" >> "tmp."$SNa"_out5_TEreads"
+				awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out4_genereads" >> "tmp."$SNa"_out6_genereads"
+			done			
+			col1=$(paste -sd "|" "tmp."$SNa"_out5_TEreads")
+			col2=$(paste -sd "|" "tmp."$SNa"_out6_genereads")
+			echo $line | awk -v c1="$col1" -v c2="$col2" '{print $0"\tTE:"c1"\tGene:"c2}'
 		fi
+		rm -f "tmp."$SNa*
+	fi
 	done < $1 > $SNa"_TE_chimericreads_final_withGENEreads.tsv"
 	echo " <-- done adding expression levels at ... $(date)" >> $SNa"_PART2_"$logname".log"
 }
@@ -322,8 +329,7 @@ combine_hits_of_each_TE $wd"/"$SNa"_out03_TEbase.tsv"
 if [ $stranded != "0" ]; then
 	check_for_TE_splicesites $wd"/"$SNa"_out12a_OUTPUT.tsv"
 	split_TE_breakpoints $wd"/"$SNa"_out15.tsv"
-	# optional. Only recommended AFTER filtering.
-	#add_expression_levels $SNa"_TE_chimericreads_final.tsv"
+	add_expression_levels $SNa"_TE_chimericreads_final.tsv"
 else
 	split_TE_breakpoints $wd"/"$SNa"_out12a_OUTPUT.tsv"
 fi

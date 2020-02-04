@@ -106,6 +106,7 @@ merge_reads()
 	# which can also be used to generate in-silico paired-end reads
 	cat $SNa"_S"$SNo"_L"$LNo$"_out1.extendedFrags.fastq.gz" $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz" > $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz"
 	MaxFragLength=$(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out1.hist" | tail -n1)
+	echo $MaxFragLength >> $wd"/."$SNa"_maxfraglength"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.extendedFrags.fastq.gz"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_1.fastq.gz"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out1.hist"
