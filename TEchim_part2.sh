@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - PART 2
-# VERSION: 0.2.3 (dev)
+# VERSION: 0.3.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 24/06/2019 (dd/mm/yyyy)
+# DATE: 07/02/2020 (dd/mm/yyyy)
 # DESCRIPTION: This script combines output from PART1
 ################################################################################
 

@@ -4,7 +4,7 @@
 # TITLE: TEchim - PART 1
 # VERSION: 0.3.0 (dev) - BRANCHED OUT AT THE MOMENT
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 12/06/2019 (dd/mm/yyyy)
+# DATE: 07/02/2020 (dd/mm/yyyy)
 # DESCRIPTION: This tool converts paired-end  OR single reads to in-silico
 # pairs, which are then screened for pairs where one mate maps in the genome and
 # the other on a transposon. The contigs of these read pairs are then used to 
