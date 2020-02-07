@@ -64,7 +64,7 @@ write_logfile()
 	echo "Working directory:" "$wd/$SNa"_S"$SNo"_L"$LNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "FASTQ _1:" "$FASTQ1" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "FASTQ _2:" "$FASTQ2" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-	echo " => $(zcat < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " => $(zcat -f < $FASTQ1 | wc -l | awk '{print $1/4}') reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "Sample name:" "$SNa" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "Sample number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "Sequencing lane number:" "$SNo" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -192,13 +192,16 @@ align_and_filter()
 	mv $SNa"_S"$SNo"_L"$LNo$"_out4"* $SNa"_S"$SNo"_L"$LNo"_STAR"/.
 	# extract only hits that cross TE-GENE breakpoints. the awk commands remove
 	# (1) TE-TE reads and (2)&(3) reads that span the TE and it's LTR
-	samtools view $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ $7) && ($7 !~ $3)' > $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
+	samtools view $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | grep TEchr_ | awk '($7 != "=") && ($3 !~ "TEchr_" || $7 !~ "TEchr_")' > $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
 	if [ ! -s $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" ]; then
 		echo " #### ERROR: file does not have any TE-GENE brakpoint spanning reads!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		echo " --> exited at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 		exit
 	fi
 	#### STREAM 2 ####
+	# The output of this stream is based on the STAR alignment of in-silico paired-end reads.
+	# The hits will only be used for reads where the genome-section is successfully mapped with BLAST (further downstream), but the transposon section is NOT.
+	# Using the maximum fragment length, and information about whether the gene- and te- reads are mapped to the (+)ive or (-)ive strand (all contained in SAM-flag) are used for output information.
 	# Select pairs where both reads map to positive strand
 	samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 	# Select pairs where read1 maps to positive, and read2 to negative
@@ -216,6 +219,8 @@ align_and_filter()
 	rm $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_"*
 	rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
 	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed" | awk '{print $1}') unique reads that were picked up for STREAM2 - these will still be filtered, STREAM1 has priority." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed" | awk '{print $1}') unique reads that were picked up for STREAM3 - these will still be filtered, STREAM1 and 2 have priority." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " <-- done with mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
@@ -254,9 +259,17 @@ blast_on_longreads ()
 	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" | awk -v flength="$fastalength" '{if ($9-$4 > flength/2 || $3 > flength/2) {print $0} }' > $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv"
 	join -1 1 -2 7 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv") <(sort -k 7 $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed") | awk 'BEGIN {OFS = "\t"} {if ($8=="plus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","+",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","+",$3,$4,$9}} else if ($8=="minus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","-",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","-",$3,$4,$9}}}' | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
 	tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed" | awk -v flength="$fastalength" 'BEGIN {OFS="\t"} {if ($6 == "plus") {if ($7 == "TE-GENE") {testart=$10+flength; teend=$10+$13} else if ($7 == "GENE-TE") {testart=$10+flength+$14-$15; teend=$10}} else if ($6 == "minus") {if ($7 == "TE-GENE") {testart=$10+flength-$13; teend=$10} else if ($7 == "GENE-TE") {testart=$10+flength; teend=$10+$15-$14}} {print $1,$2,$3,$4"|"$5"|"$6"|"$7"|"$8"|"$9"|"testart"-"teend"|0",$11,$12}}' > $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
-	echo " ------ BLAST results: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads.tsv" | awk '{print $1}') hits ($(grep no-hit $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv" | wc -l | awk '{print $1}') no hit)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ BLAST results:" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" | awk '{print $1}') input reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" | awk '{print $1}') reads with a genome location" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ |> of the reads with genome location: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv" | awk '{print $1}') reads with a genome- and transposon location" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ |> of the reads with genome location: $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed" | awk '{print $1}') reads from STREAM2 will be added to STREAM1" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out8_TExGENES_blastedreads_plusnohit.tsv"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
 	echo " <-- done with BLAST at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo "--------------------------------" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 }
@@ -307,9 +320,14 @@ create_summary_table ()
 	# add results from STREAM 3, making sure no reads are taken twice
 	grep -Fvf <(tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" | awk '{print $4}') <(cat $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed") > $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
 	cat $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed"
+	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | awk '{print $1}') reads from STREAM3 have been added" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	echo " ------ In total, $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed" | awk '{print $1}') chimeric reads were found." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm tmpfile.*
-	echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-	echo "================================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
+	rm -f $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed"
 }
 
 ################################################################################
@@ -342,6 +360,7 @@ blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" $SNa"_S"$SN
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
 
 create_summary_table $SNa"_S"$SNo"_L"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv" &&\
-	rm $SNa"_S"$SNo"_L"$LNo$"_out10_TExGENES_blastedreads.tsv"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv"
 
 echo " <-- all done at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+echo "================================" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
