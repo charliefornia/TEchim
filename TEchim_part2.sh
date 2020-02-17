@@ -226,7 +226,7 @@ split_TE_breakpoints()
 	cat $1 | while read line; do echo $line | awk '{print $12}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolb"
 	cat $1 | while read line; do echo $line | awk '{print $11}' | awk -v RS=',' '{print$0}' | sort | uniq -c | awk '{if (NR!=1) printf$2"("$1"),"}'| awk '{print $0"\n"}' | awk 'NF'; done > $SNa"_newcolc"
 	# for final output, get rid of original TE-breakpoint field
-	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$13,$14,$15}' $SNa"_out15.tsv" > $SNa"_newcola"
+	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$13,$14,$15}' $1 > $SNa"_newcola"
 	# append pooled TE breakpoints to final output
 	paste $SNa"_newcola" $SNa"_newcolb" $SNa"_newcolc" > $SNa"_TE_chimericreads_final.tsv"
 	rm $SNa"_newcola" $SNa"_newcolb" $SNa"_newcolc"
