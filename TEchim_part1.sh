@@ -350,6 +350,8 @@ if [ -f "$FASTQ2" ]; then
 		&& rm $SNa"_S"$SNo"_L"$LNo$"_out1.combined.fastq.gz" && rm $SNa"_S"$SNo"_L"$LNo$"_out1.notCombined_2.fastq.gz"
 elif [ -f "$FASTQ1" ]; then
 	create_fasta $FASTQ1
+	MaxFragLength=$(awk '{ if (length($0) > max) max = length($0) } END { print max }' $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa")
+	echo $MaxFragLength >> $wd"/."$SNa"_maxfraglength"
 else
 	echo " #### ERROR: At least one FASTQ input is required!" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	exit
