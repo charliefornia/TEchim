@@ -84,6 +84,7 @@ case "$kit" in
 		;;
 esac
 
+# generate random number to label all temporary files for deletion
 rand=$RANDOM
 
 # get file basename
@@ -91,6 +92,11 @@ fbname=$(basename "$FASTQ2" | cut -d. -f1)
 
 # get location of DropSeq tools. Dropseq tools must be in the $PATH.
 pathtoDS=$(which Drop-seq_alignment.sh | rev | cut -d "/" -f2- | rev)
+
+# get location of input file -> this will be the location of the output
+pathtofile=$(readlink -f $FASTQ2 | rev | cut -d/ -f2- | rev)
+
+cd $pathtofile
 
 # STEP1: convert Fastq to SAM
 java -jar $pathtoDS"/3rdParty/picard/picard.jar" FastqToSam F1=$FASTQ1 F2=$FASTQ2 O="./tmp."$rand"_01" SM=$fbname
