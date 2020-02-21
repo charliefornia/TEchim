@@ -104,7 +104,9 @@ split_CDS()
 
 calculate_TE_coverage()
 {
-	cd $wd
+	cd $wd"/IGE_COLLECTION_"$SNa
+	if [[ ! -f $REFpath"TEs.POSITIVE.fa.bed" ]]; then awk '{if ($6 == "+") print $0}' $REFpath"TEs.fa.bed" > $REFpath"TEs.POSITIVE.fa.bed"; fi
+	if [[ ! -f $REFpath"TEs.NEGATIVE.fa.bed" ]]; then awk '{if ($6 == "-") print $0}' $REFpath"TEs.fa.bed" > $REFpath"TEs.NEGATIVE.fa.bed"; fi
 	# create list with all sample numbers in PART1 output
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_SNo
@@ -130,18 +132,12 @@ calculate_TE_coverage()
 			samtools merge -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/tmp."$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE_1.bam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/tmp."$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE_2.bam"
 			samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam"
 			rm $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/tmp."$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out."*
-			if [[ ! -f $REFpath"TEs.POSITIVE.fa.bed" ]]; then awk '{if ($6 == "+") print $0}' $REFpath"TEs.fa.bed" > $REFpath"TEs.POSITIVE.fa.bed"; fi
-			if [[ ! -f $REFpath"TEs.NEGATIVE.fa.bed" ]]; then awk '{if ($6 == "-") print $0}' $REFpath"TEs.fa.bed" > $REFpath"TEs.NEGATIVE.fa.bed"; fi
 			# quantify coverage of TEs in each sample/lane - this line will print the number
 			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.POSITIVE.bam" -bed $REFpath"TEs.POSITIVE.fa.bed" | awk '{print $7}' > "tmp."$SNa"_"$SNo"_"$LNo"_out31_TEcoverage_perSample.tsv"
 			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam" -bed $REFpath"TEs.NEGATIVE.fa.bed" | awk '{print $7}' >> "tmp."$SNa"_"$SNo"_"$LNo"_out31_TEcoverage_perSample.tsv"
-			# this line will print the TE name - only has to be done once (hence the if statement)
-			if [[ ! -f "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv" ]]; then
-				bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.POSITIVE.bam" -bed $REFpath"TEs.POSITIVE.fa.bed" | awk '{print $4}' > "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv"
-				bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam" -bed $REFpath"TEs.NEGATIVE.fa.bed" | awk '{print $4}' >> "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv"
-			fi
 		done
 	done
+	cat $REFpath"TEs.POSITIVE.fa.bed" $REFpath"TEs.NEGATIVE.fa.bed" | awk '{print $4}' > "tmp."$SNa"_out31a_TEcoverage_TEnames.tsv"
 	# combine all TE coverage numbers					  | calculate average, round to full integer
 	paste "tmp."$SNa"_"*"_out31_TEcoverage_perSample.tsv" | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "tmp."$SNa"_out31b_TEcoverage_averages.tsv"
 	# combine averages with TE names
@@ -153,6 +149,8 @@ find_matching_IGEs()
 {
 	cd $wd"/IGE_COLLECTION_"$SNa
 	echo " --> start finding matching IGE_$IGEgroup at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
+	if [[ ! -f $SNa"_inputGENEs_POSITIVE_"$IGEgroup ]]; then awk '{if ($6 == "+") print $0}' $SNa"_inputGENEs_"$IGEgroup > $SNa"_inputGENEs_POSITIVE_"$IGEgroup; fi
+	if [[ ! -f $SNa"_inputGENEs_NEGATIVE_"$IGEgroup ]]; then awk '{if ($6 == "-") print $0}' $SNa"_inputGENEs_"$IGEgroup > $SNa"_inputGENEs_NEGATIVE_"$IGEgroup; fi
 	# assess how many Samples and Lanes exist - run bedtools mutlicov on each sample/lane
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_SNo
@@ -160,18 +158,12 @@ find_matching_IGEs()
 		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
 		for LNo in $list_of_LNo
 		do
-			if [[ ! -f $SNa"_inputGENEs_POSITIVE_"$IGEgroup ]]; then awk '{if ($6 == "+") print $0}' $SNa"_inputGENEs_"$IGEgroup > $SNa"_inputGENEs_POSITIVE_"$IGEgroup; fi
-			if [[ ! -f $SNa"_inputGENEs_NEGATIVE_"$IGEgroup ]]; then awk '{if ($6 == "-") print $0}' $SNa"_inputGENEs_"$IGEgroup > $SNa"_inputGENEs_NEGATIVE_"$IGEgroup; fi
 			# quantify coverage of CDS (subsample) in each sample/lane - this line will print the number
 			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.POSITIVE.bam" -bed $SNa"_inputGENEs_POSITIVE_"$IGEgroup | awk '{print $7}' > "tmp."$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_out31_GENEcoverage_perSample.tsv"
 			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam" -bed $SNa"_inputGENEs_NEGATIVE_"$IGEgroup | awk '{print $7}' >> "tmp."$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_out31_GENEcoverage_perSample.tsv"
-			# this line will print the GENE names - only has to be done once (hence the if statement)
-			if [[ ! -f "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv" ]]; then
-				bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.POSITIVE.bam" -bed $SNa"_inputGENEs_POSITIVE_"$IGEgroup | awk '{print $4}' > "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv"
-				bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.NEGATIVE.bam" -bed $SNa"_inputGENEs_NEGATIVE_"$IGEgroup | awk '{print $4}' >> "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv"
-			fi
-		done
+			done
 	done
+	cat $SNa"_inputGENEs_POSITIVE_"$IGEgroup $SNa"_inputGENEs_NEGATIVE_"$IGEgroup | awk '{print $4}' > "tmp."$IGEgroup"_"$SNa"_out31a_GENEcoverage_GENEnames.tsv"	
 	# combine all GENE coverage numbers						| calculate average, round to full integer
 	paste "tmp."$IGEgroup"_"$SNa"_"*"_out31_GENEcoverage_perSample.tsv" | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "tmp."$IGEgroup"_"$SNa"_out31b_GENEcoverage_averages.tsv"
 	# combine averages with GENE names
@@ -182,7 +174,7 @@ find_matching_IGEs()
 		coverage=$(echo $TEline | awk '{print $2}')
 		# find the gene that matches the expression level of each TE									  | print matching TE-GENE pairs
 		awk -v v1="$coverage" '$2>v1 {print $1"\t"$2; exit}' $IGEgroup"_"$SNa"_GENEcoverage_averages.tsv" | awk -v te="$TEline" '{print te"\t"$0}'
-	done < $wd"/"$SNa"_TEcoverage_averages.tsv" > "tmp."$IGEgroup"_"$SNa"_out35_TEmatchedCDS.tsv"
+	done < $wd"/IGE_COLLECTION_"$SNa"/"$SNa"_TEcoverage_averages.tsv" > "tmp."$IGEgroup"_"$SNa"_out35_TEmatchedCDS.tsv"
 	# left-join TE-GENE pairs with original GENE bed (this is to get the strand of the according CDS's)																				 | print a bed file with each UNIQUE CDS (strand-specific!)
 	join <(awk '{print $3"\t"$1"\t"$2"\t"$4}' "tmp."$IGEgroup"_"$SNa"_out35_TEmatchedCDS.tsv" | sort -t $'\t') <(awk '{print $4"\t"$1"\t"$2"\t"$3"\t"$6}' $SNa"_inputGENEs_"$IGEgroup | sort -t $'\t') | awk '!seen[$1]++ {print $5"\t"$6"\t"$7"\t"$1"\t.\t"$8}' > $IGEgroup"_"$SNa"_IGEs.bed"
 	# also print a lookup table to link CDS's to the matching TE
