@@ -518,7 +518,7 @@ split_IGE_breakpoints()
 	awk 'BEGIN{FS=" ";OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$13,$14,$15,$16}' $1 > $IGEgroup"_"$SNa"_IGE_newcola"
 	# append pooled TE breakpoints to final output
 	paste $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb" $IGEgroup"_"$SNa"_IGE_newcolc" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv"
-	awk '{all=$0; gsub(/@/,"\t"); if($5 !~ $18) print all}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv"
+	awk '{all=$0; gsub(/@/,"\t"); if($5 !~ $16) print all}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv"
 	rm $IGEgroup"_"$SNa"_IGE_newcola" $IGEgroup"_"$SNa"_IGE_newcolb"
 	rm $1
 	echo " <-- done tyding up IGE_$IGEgroup breakpoints at ... $(date)" >> $wd"/"$SNa"_IGE_"$logname".log"
