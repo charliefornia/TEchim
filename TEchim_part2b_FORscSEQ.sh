@@ -241,60 +241,63 @@ add_expression_levels()
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	while read line
 	do
-		breakpoint=$(echo $line | awk '{print $4}')
-		chromosome=$(echo $line | awk '{print $2}')
-		genestart=$(grep $(echo $line | awk '{print $1}') $REFpath$REFbase"_GENES.bed" | awk '{print $2}')
-		geneend=$(grep $(echo $line | awk '{print $1}') $REFpath$REFbase"_GENES.bed" | awk '{print $3}')
-		
-		# make sure collecting file does not yet exist
-		rm -f "tmp."$SNa"_out5_TEreads"
-		rm -f "tmp."$SNa"_out6_genereads"
-		
-		for SNo in $list_of_SNo
-			do
+		numberofreads=$(echo $line | awk '{print $8}')
+		# THIS VALUE CAN BE CHANGED - lower than 1 will take a long time
+		if ($numberofreads > 1); then
+			breakpoint=$(echo $line | awk '{print $4}')
+			chromosome=$(echo $line | awk '{print $2}')
+			genestart=$(grep $(echo $line | awk '{print $1}') $REFpath$REFbase"_GENES.bed" | awk '{print $2}')
+			geneend=$(grep $(echo $line | awk '{print $1}') $REFpath$REFbase"_GENES.bed" | awk '{print $3}')
 			# make sure collecting file does not yet exist
-			rm -f "tmp."$SNa"_"$SNo"_out3_TEreads"
-			rm -f "tmp."$SNa"_"$SNo"_out4_genereads"
-			list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-			for LNo in $list_of_LNo
+			rm -f "tmp."$SNa"_out5_TEreads"
+			rm -f "tmp."$SNa"_out6_genereads"
+			for SNo in $list_of_SNo
 				do
-					# check if STAR output bam has already been indexed, index if not
-					if [[ -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" ; fi
-					# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
-					if [[ $(echo $line | awk '{print $3}') == "+" ]]; then
-						if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
-							startnt=$(($breakpoint-$MaxFragLength))
-							region1=$(echo $chromosome":"$startnt"-"$breakpoint)
-							samtools view -f 65 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
-							samtools view -f 97 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v geneend="$geneend" '{ if($7 == "=" && breakpoint<$8 && $8<geneend) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
-							endnt=$(($breakpoint+$MaxFragLength))
-							region1=$(echo $chromosome":"$breakpoint"-"$endnt)
-							samtools view -f 145 -F 256 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
-							samtools view -f 145 -F 288 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v genestart="$genestart" '{ if($7 == "=" && genestart<$8 && $8<breakpoint) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+				# make sure collecting file does not yet exist
+				rm -f "tmp."$SNa"_"$SNo"_out3_TEreads"
+				rm -f "tmp."$SNa"_"$SNo"_out4_genereads"
+				list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
+				for LNo in $list_of_LNo
+					do
+						# check if STAR output bam has already been indexed, index if not
+						if [[ -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam.bai" ]] ; then : ; else samtools index $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" ; fi
+						# for the next step, both the strandedness of the gene and the type of fragment (GENE-TE or TE-GENE) determines the necessary steps
+						if [[ $(echo $line | awk '{print $3}') == "+" ]]; then
+							if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
+								startnt=$(($breakpoint-$MaxFragLength))
+								region1=$(echo $chromosome":"$startnt"-"$breakpoint)
+								samtools view -f 65 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
+								samtools view -f 97 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v geneend="$geneend" '{ if($7 == "=" && breakpoint<$8 && $8<geneend) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+							elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
+								endnt=$(($breakpoint+$MaxFragLength))
+								region1=$(echo $chromosome":"$breakpoint"-"$endnt)
+								samtools view -f 145 -F 256 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
+								samtools view -f 145 -F 288 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v genestart="$genestart" '{ if($7 == "=" && genestart<$8 && $8<breakpoint) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+							fi
+						elif [[ $(echo $line | awk '{print $3}') == "-" ]]; then 
+							if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
+								endnt=$(($breakpoint+$MaxFragLength))
+								region1=$(echo $chromosome":"$breakpoint"-"$endnt)
+								samtools view -f 81 -F 256 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
+								samtools view -f 81 -F 288 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v genestart="$genestart" '{ if($7 == "=" && genestart<$8 && $8<breakpoint) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+							elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
+								startnt=$(($breakpoint-$MaxFragLength))
+								region1=$(echo $chromosome":"$startnt"-"$breakpoint)
+								samtools view -f 129 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
+								samtools view -f 161 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v geneend="$geneend" '{ if($7 == "=" && breakpoint<$8 && $8<geneend) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
+							fi
 						fi
-					elif [[ $(echo $line | awk '{print $3}') == "-" ]]; then 
-						if [[ $(echo $line | awk '{print $6}') == "GENE-TE" ]]; then
-							endnt=$(($breakpoint+$MaxFragLength))
-							region1=$(echo $chromosome":"$breakpoint"-"$endnt)
-							samtools view -f 81 -F 256 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
-							samtools view -f 81 -F 288 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v genestart="$genestart" '{ if($7 == "=" && genestart<$8 && $8<breakpoint) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-						elif [[ $(echo $line | awk '{print $6}') == "TE-GENE" ]]; then
-							startnt=$(($breakpoint-$MaxFragLength))
-							region1=$(echo $chromosome":"$startnt"-"$breakpoint)
-							samtools view -f 129 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v te="$(echo $line | awk '{print $5}')" '{ if($7 ~ te) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out3_TEreads"
-							samtools view -f 161 -F 272 $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" $region1 | awk -v breakpoint="$breakpoint" -v geneend="$geneend" '{ if($7 == "=" && breakpoint<$8 && $8<geneend) {print $0}}' | wc -l | awk '{print $1}' >> "tmp."$SNa"_"$SNo"_out4_genereads"
-						fi
-					fi
-				done
-				
-				awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out3_TEreads" >> "tmp."$SNa"_out5_TEreads"
-				awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out4_genereads" >> "tmp."$SNa"_out6_genereads"
-			done			
-			col1=$(paste -sd "|" "tmp."$SNa"_out5_TEreads")
-			col2=$(paste -sd "|" "tmp."$SNa"_out6_genereads")
-			echo $line | awk -v c1="$col1" -v c2="$col2" 'BEGIN{IFS=" " ; OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,"TE:"c1,"Gene:"c2}'
-			rm -f "tmp."$SNa*
+					done	
+					awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out3_TEreads" >> "tmp."$SNa"_out5_TEreads"
+					awk '{s+=$1} END {print s}' "tmp."$SNa"_"$SNo"_out4_genereads" >> "tmp."$SNa"_out6_genereads"
+				done			
+				col1=$(paste -sd "|" "tmp."$SNa"_out5_TEreads")
+				col2=$(paste -sd "|" "tmp."$SNa"_out6_genereads")
+				echo $line | awk -v c1="$col1" -v c2="$col2" 'BEGIN{IFS=" " ; OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,"TE:"c1,"Gene:"c2}'
+				rm -f "tmp."$SNa*
+		else
+			echo $line
+		fi
 	done < $1 > $SNa"_TE_chimericreads_final_withGENEreads.tsv"
 	echo " <-- done adding expression levels at ... $(date)" >> $SNa"_PART2_"$logname".log"
 }
