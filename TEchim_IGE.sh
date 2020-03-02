@@ -252,11 +252,6 @@ align_IGEref_and_filter()
 	samtools view -f 113 $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_STAR"/$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|plus|GENE-TE|"s"|"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|minus|TE-GENE|"s"|"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5b_STREAM2_FORout10c.bed"
 	bedtools sort -i $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5b_STREAM2_FORout10c.bed" > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out10b_STREAM2_additional_chimera.bed"
 	rm $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5b_STREAM2_FORout10c.bed"
-	#### STREAM 3 ####
-	# in addition to in-silico reads, run STAR aligner on long reads - NOTE: attribute --chimOutType Junctions <-This creates output file with chimeric reads
-	STAR --runThreadN $nc --genomeDir $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_CONTAINER/STAR_"$IGEgroup"_"$SNa"_IGEref" --readFilesIn $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.fa" --chimSegmentMin 20 --chimOutType Junctions --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4c_STREAM3_longreads_" --clip3pAdapterSeq AAAAAAAA
-	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {if ($1 ~ "TEchr" && $4 !~ "TEchr" ) { print $4,$13,$13+1,$10"|"$1"|"$3"|TE-GENE|"s"|"l"|"$11"|0",".",$6} else if ($4 ~ "TEchr" && $1 !~ "TEchr" ) {print $1,$11,$11+1,$10"|"$4"|"$6"|GENE-TE|"s"|"l"|"$13"|0",".",$3}}' $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4c_STREAM3_longreads_Chimeric.out.junction" | sed 's/TEchr_//g' | sed 's/|+|/|plus|/g' | sed 's/|-|/|minus|/g' > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
-	rm $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4c_STREAM3_longreads_"*
 	echo " ------ sample contains $(wc -l $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_TExGENES.sam" | awk '{print $1}') reads that span gene-TE breakpoint." >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	echo " <-- done with mapping on IGE reference at ... $(date)" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	echo "--------------------------------" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
@@ -357,17 +352,11 @@ create_summary_table ()
 	paste -d'|' tmpfile.readname tmpfile.breakpoint.TE tmpfile.uncertainty > tmpfile.readname.extended
 	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11a_STREAM1_breakpoints.bed"
 	# add results from STREAM 2
-	cat $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11a_STREAM1_breakpoints.bed" $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out12_STREAM1and2_breakpoints.bed"
-	# add results from STREAM 3, making sure no reads are taken twice
-	grep -Fvf <(tr "|" "\t" < $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out12_STREAM1and2_breakpoints.bed" | awk '{print $4}') <(cat $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed") > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
-	cat $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out12_STREAM1and2_breakpoints.bed" $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out13_breakpoints.bed"
-	echo " ------ $(wc -l $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | awk '{print $1}') reads from STREAM3 have been added" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
+	cat $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11a_STREAM1_breakpoints.bed" $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed" | bedtools sort -i - > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out13_breakpoints.bed"
 	echo " ------ In total, $(wc -l $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out13_breakpoints.bed" | awk '{print $1}') chimeric reads were found." >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	rm tmpfile.*
-	rm -f $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
 	rm -f $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11a_STREAM1_breakpoints.bed"
 	rm -f $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
-	rm -f $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
 	rm -f $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out12_STREAM1and2_breakpoints.bed"
 	echo " <-- all done at ... $(date)" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	echo "================================" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"

@@ -212,11 +212,6 @@ align_and_filter()
 	samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 	bedtools sort -i $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed" > $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
-	#### STREAM 3 ####
-	# in addition to in-silico reads, run STAR aligner on long reads - NOTE: attribute --chimOutType Junctions <-This creates output file with chimeric reads
-	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa" --chimSegmentMin 20 --chimOutType Junctions --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_" --clip3pAdapterSeq AAAAAAAA
-	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {if ($1 ~ "TEchr" && $4 !~ "TEchr" ) { print $4,$13,$13+1,$10"|"$1"|"$3"|TE-GENE|S"s"|L"l"|"$11"|0",".",$6} else if ($4 ~ "TEchr" && $1 !~ "TEchr" ) {print $1,$11,$11+1,$10"|"$4"|"$6"|GENE-TE|S"s"|L"l"|"$13"|0",".",$3}}' $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_Chimeric.out.junction" | sed 's/TEchr_//g' | sed 's/|+|/|plus|/g' | sed 's/|-|/|minus|/g' > $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
-	rm $SNa"_S"$SNo"_L"$LNo$"_out4c_STREAM3_longreads_"*
 	rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
 	echo " ------ sample contains $(awk '{print $1}' $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" | sort | uniq | wc -l | awk '{print $1}') unique reads that span gene-TE breakpoint." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " ------ sample contains $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed" | awk '{print $1}') unique reads that were picked up for STREAM2 - these will still be filtered, STREAM1 has priority." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -316,17 +311,11 @@ create_summary_table ()
 	paste -d'|' tmpfile.readname tmpfile.breakpoint.TE tmpfile.uncertainty > tmpfile.readname.extended
 	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed"
 	# add results from STREAM 2
-	cat $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed"
-	# add results from STREAM 3, making sure no reads are taken twice
-	grep -Fvf <(tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" | awk '{print $4}') <(cat $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed") > $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
-	cat $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed"
-	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed" | awk '{print $1}') reads from STREAM3 have been added" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
+	cat $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed" $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed" | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed"
 	echo " ------ In total, $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out13_breakpoints.bed" | awk '{print $1}') chimeric reads were found." >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	rm tmpfile.*
-	rm -f $SNa"_S"$SNo"_L"$LNo$"_out10c_STREAM3_additional_breakpoints.unfiltered.bed"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11a_STREAM1_breakpoints.bed"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
-	rm -f $SNa"_S"$SNo"_L"$LNo$"_out11c_STREAM3_additional_breakpoints.filtered.bed"
 	rm -f $SNa"_S"$SNo"_L"$LNo$"_out12_STREAM1and2_breakpoints.bed"
 }
 
