@@ -476,7 +476,7 @@ check_for_IGE_splicesites()
 		if [ $stranded = "0" ]; then
 			d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa | awk '{print $10}' | paste -sd ";" -)
 		else
-			d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa -s | awk '{print $10}' | paste -sd ";" -)
+			d=$(bedtools intersect -a "tmp."$IGEgroup"_"$SNa"_IGEref_out13.bed" -b $REFpath$REFbase"_FEATURES.bed" -loj -wa | awk '{print $10}' | paste -sd ";" -)
 		fi
 		# check whether breakpoint on the genome overlaps with splice donor site (in the case of a GENE-TE fragment)
 		# or with splice acceptor site (in the case of a TE-GENE fragment). the REF files _SPLICE_DONORS.bed and 
