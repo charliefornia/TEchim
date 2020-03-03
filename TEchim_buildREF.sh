@@ -141,6 +141,6 @@ cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" 'BEGIN{OFS="\t"}{if ($3 == "CDS" 
 bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name > "tmp."$REFbase".filtered_CDS.fasta"
 makeblastdb -dbtype nucl -in $REFbase".fa"
 blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -u > "tmp."$REFbase".use_these_CDS.tsv"
-awk 'BEGIN{FS="@"; OFS="\t"} {print $2,$3,$4,$1"@"$2"-"$3":"$4,".",$5}' tmp.dmel625.use_these_CDS.tsv > $REFbase".CDS_for_IGE.bed"
+awk 'BEGIN{FS="@"; OFS="\t"} {print $2,$3,$4,$1"@"$2"-"$3":"$4,".",$5}' tmp.dmel625.use_these_CDS.tsv | grep -v mito > $REFbase".CDS_for_IGE.bed"
 rm "tmp."$REFbase*
 
