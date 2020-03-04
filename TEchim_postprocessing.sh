@@ -51,9 +51,11 @@ cd $wd"/IGE_COLLECTION_"$SNa"/"
 input_letters=$(printf "a\tb\tc\td\te\tf\tg\th\ti\tj")	
 for IGEgroup in $input_letters
 do
-	(while read line; do a=$(echo $line | awk '{print$1}'); b=$(echo $line | awk '{gsub ("@","\t"); print $5}'); c=$(grep $a $paralogs | grep $b | wc -l | awk '{print $1}'); if [[ $c = "0" ]]; then echo $line | awk '{gsub(" ","\t"); print $0}'; fi; done < $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2"
-	# remove cases where the hit is within +/- 1000nt of IGE
-	awk '{ orig=$0; gsub("@","\t",$5); a=$5; gsub("-","\t",a); $0=a; gsub("\\(","\t",$4); gsub(":","\t"); chr=$3; start=$4-1000; end=$5+1000; $0=orig; if($2!=chr) print $0; else if (start > $4 && end > $4) print $0}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3"	
+	# remove mitochondrial hits and hits in less than 2 replicates
+	(grep -v mito $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv" | awk '{ if ($8 > 1) {print $0}}' > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1"
+	while read line; do a=$(echo $line | awk '{print$1}'); b=$(echo $line | awk '{gsub ("@","\t"); print $5}'); c=$(grep $a $paralogs | grep $b | wc -l | awk '{print $1}'); if [[ $c = "0" ]]; then echo $line | awk '{gsub(" ","\t"); print $0}'; fi; done < $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2"
+	# remove cases where the hit is within +/- 5kb of IGE
+	awk '{ orig=$0; gsub("@","\t",$5); a=$5; gsub("-","\t",a); $0=a; gsub("\\(","\t",$4); gsub(":","\t"); chr=$2; start=$3-5000; end=$4+5000; $0=orig; if($2!=chr) print $0; else if (start > $4 || end < $4) print $0}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3"	
 	awk '{print $2"\t"$4-21"\t"$4+20"\tLINE"NR"\t.\t"$3}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.bed"
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_SNo
