@@ -243,7 +243,7 @@ add_expression_levels()
 	do
 		numberofreads=$(echo $line | awk '{print $8}')
 		# THIS VALUE CAN BE CHANGED - lower than 1 will take a long time
-		if ($numberofreads > 1); then
+		if [ $numberofreads \> 1 ]; then
 			breakpoint=$(echo $line | awk '{print $4}')
 			chromosome=$(echo $line | awk '{print $2}')
 			genestart=$(grep $(echo $line | awk '{print $1}') $REFpath$REFbase"_GENES.bed" | awk '{print $2}')
