@@ -44,7 +44,7 @@ get_variables()
 ################################################################################
 # execute:
 
-# change to wd
+# for IGEs
 cd $wd
 get_variables
 cd $wd"/IGE_COLLECTION_"$SNa"/"
@@ -52,43 +52,66 @@ input_letters=$(printf "a\tb\tc\td\te\tf\tg\th\ti\tj")
 for IGEgroup in $input_letters
 do
 	# remove mitochondrial hits and hits in less than 2 replicates
-	(grep -v mito $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv" | awk '{ if ($8 > 1) {print $0}}' > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1"
-	while read line; do a=$(echo $line | awk '{print$1}'); b=$(echo $line | awk '{gsub ("@","\t"); print $5}'); c=$(grep $a $paralogs | grep $b | wc -l | awk '{print $1}'); if [[ $c = "0" ]]; then echo $line | awk '{gsub(" ","\t"); print $0}'; fi; done < $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2"
+	(grep -v mito $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.tsv" | awk '{ if ($8 > 1) {print $0}}' > "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1"
+	while read line; do a=$(echo $line | awk '{print$1}'); b=$(echo $line | awk '{gsub ("@","\t"); print $5}'); c=$(grep $a $paralogs | grep $b | wc -l | awk '{print $1}'); if [[ $c = "0" ]]; then echo $line | awk '{gsub(" ","\t"); print $0}'; fi; done < "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1" > "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2"
 	# remove cases where the hit is within +/- 5kb of IGE
-	awk '{ orig=$0; gsub("@","\t",$5); a=$5; gsub("-","\t",a); $0=a; gsub("\\(","\t",$4); gsub(":","\t"); chr=$2; start=$3-5000; end=$4+5000; $0=orig; if($2!=chr) print $0; else if (start > $4 || end < $4) print $0}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3"	
-	awk '{print $2"\t"$4-21"\t"$4+20"\tLINE"NR"\t.\t"$3}' $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.bed"
+	awk '{ orig=$0; gsub("@","\t",$5); a=$5; gsub("-","\t",a); $0=a; gsub("\\(","\t",$4); gsub(":","\t"); chr=$2; start=$3-5000; end=$4+5000; $0=orig; if($2!=chr) print $0; else if (start > $4 || end < $4) print $0}' "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2" > "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3"	
+	awk '{print $2"\t"$4-21"\t"$4+20"\tLINE"NR"\t.\t"$3}' "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3" > "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.bed"
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_SNo
 	do
 		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
 		for LNo in $list_of_LNo
 		do
-			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.bed" -s  | awk '{print $7}' > "tmp."$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_insertionsites.coverage_perSample.tsv" &
+			bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.bed" -s  | awk '{print $7}' > "pp.tmp."$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_insertionsites.coverage_perSample.tsv" &
 		done
 	done
 	wait
-	paste "tmp."$IGEgroup"_"$SNa"_"*"_insertionsites.coverage_perSample.tsv" | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "tmp."$IGEgroup"_"$SNa"_IGEcoverage_averages.tsv"
+	paste "pp.tmp."$IGEgroup"_"$SNa"_"*"_insertionsites.coverage_perSample.tsv" | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "pp.tmp."$IGEgroup"_"$SNa"_IGEcoverage_averages.tsv"
+	rm "pp.tmp."$IGEgroup"_"$SNa"_"*"_insertionsites.coverage_perSample.tsv"
 	# combine averages with chimeric output
-	paste $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3" "tmp."$IGEgroup"_"$SNa"_IGEcoverage_averages.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP4.tsv") &
+	paste "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3" "pp.tmp."$IGEgroup"_"$SNa"_IGEcoverage_averages.tsv" > $IGEgroup"_"$SNa"_IGEref_chimericreads_final.FILTERED.ABOVE1.withAverages.tsv"
+	rm "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP1"
+	rm "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP2"
+	rm "pp.tmp."$IGEgroup"_"$SNa"_IGEref_chimericreads_final.STEP3"
+	rm "pp.tmp."$IGEgroup"_"$SNa"_IGEcoverage_averages.tsv"
+	) &
 done
 wait
 
 
+# fir TEs
 cd $wd
-awk '{print $2"\t"$4-21"\t"$4+20"\tLINE"NR"\t.\t"$3}' $SNa"_TE_chimericreads_final.withGENES.ABOVE1.tsv" > $SNa"_TE_chimericreads_final.STEP4.bed"
+awk '{print "LINE"NR"\t"$0}' $SNa"_TE_chimericreads_final_withGENEreads.tsv" > "pp.tmp."$SNa"_TE_chimericreads_final.ALL.STEP2.tsv"
+awk '{if ($8 > 1) {print "LINE"NR"\t"$0}}' $SNa"_TE_chimericreads_final_withGENEreads.tsv" > "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv"
+awk '{print $3"\t"$5-21"\t"$5+20"\t"$1"\t.\t"$4}' "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv" > "pp.tmp."$SNa"_TE_chimericreads_final.STEP4.bed"
 list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 for SNo in $list_of_SNo
 do
 	list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
 	for LNo in $list_of_LNo
 	do
-		bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed $SNa"_TE_chimericreads_final.STEP4.bed" -s  | awk '{print $7}' > "tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage_perSample.tsv" &
+		(bedtools multicov -bams $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" -bed "pp.tmp."$SNa"_TE_chimericreads_final.STEP4.bed" -s  | awk '{print $4"\t"$7}' > "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage.and.line_perSample.tsv" 
+		awk '{print $2}' "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage.and.line_perSample.tsv"  > "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage_perSample.tsv"
+		awk '{print $1}' "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage.and.line_perSample.tsv"  > "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.line_perSample.tsv"
+		rm "pp.tmp."$SNa"_"$SNo"_"$LNo"_TE_insertionsites.coverage.and.line_perSample.tsv")
+		&
 	done
 done
 wait
-paste "tmp."$SNa"_"*"_TE_insertionsites.coverage_perSample.tsv" | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "tmp."$SNa"_TEcoverage_averages.tsv"
+paste "pp.tmp."$SNa"_"*"_TE_insertionsites.coverage_perSample.tsv" | paste | awk '{sum=0; for(i=1; i<=NF; i++){sum+=$i}; sum/=NF; printf "%.0f\n",sum}' > "pp.tmp."$SNa"_TEcoverage_averages.tsv"
+paste "pp.tmp."$SNa"_"*"_TE_insertionsites.line_perSample.tsv" | awk '{print $1}' | paste - "pp.tmp."$SNa"_TEcoverage_averages.tsv" > "pp.tmp."$SNa"_TEcoverage_averages_FORMERGE.tsv"
+rm "pp.tmp."$SNa"_TE_chimericreads_final.STEP4.bed"
+rm "pp.tmp."$SNa"_"*"_TE_insertionsites.coverage_perSample.tsv"
+rm "pp.tmp."$SNa"_"*"_TE_insertionsites.line_perSample.tsv"
 # combine averages with chimeric output
-paste $SNa"_TE_chimericreads_final.withGENES.ABOVE1.tsv" "tmp."$SNa"_TEcoverage_averages.tsv" > $SNa"_TEref_chimericreads_final.STEP4.tsv"
+paste "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv" "pp.tmp."$SNa"_TEcoverage_averages.tsv" > $SNa"_TE_chimericreads_final.withGENES.ABOVE1.withAverages.tsv"
+rm "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv"
+join -1 1 -2 1 <(sort "pp.tmp."$SNa"_TE_chimericreads_final.ALL.STEP2.tsv") <(sort "pp.tmp."$SNa"_TEcoverage_averages_FORMERGE.tsv") > $SNa"_TE_chimericreads_final.withGENES.ALL.withAverages.tsv"
+rm "pp.tmp."$SNa"_TE_chimericreads_final.ALL.STEP2.tsv"
+rm "pp.tmp."$SNa"_TEcoverage_averages_FORMERGE.tsv"
+
+
 
 
 
