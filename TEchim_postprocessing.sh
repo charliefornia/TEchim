@@ -101,7 +101,7 @@ rm "pp.tmp."$SNa"_"*"_TE_insertionsites.coverage_perSample.tsv"
 paste "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv" "pp.tmp."$SNa"_TEcoverage_averages.tsv" | cut -f 2- > $SNa"_TE_chimericreads_final.withGENES.ABOVE1.withAverages.tsv"
 rm "pp.tmp."$SNa"_TEcoverage_averages.tsv"
 rm "pp.tmp."$SNa"_TE_chimericreads_final.ABOVE1.STEP3.tsv"
-cat <(cat $SNa"_TE_chimericreads_final.withGENES.ABOVE1.withAverages.tsv") <(awk '{if ($8 <= 1) {print $0}}' $SNa"_TE_chimericreads_final_withGENEreads.tsv") > $SNa"_TE_chimericreads_final.withGENES.ALL.withAverages.tsv"
+awk '{if ($8 <= 1) {print $0}}' $SNa"_TE_chimericreads_final_withGENEreads.tsv" | cat - $SNa"_TE_chimericreads_final.withGENES.ABOVE1.withAverages.tsv" > $SNa"_TE_chimericreads_final.withGENES.ALL.withAverages.tsv"
 
 
 
