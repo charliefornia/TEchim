@@ -293,7 +293,7 @@ add_expression_levels()
 				done			
 				col1=$(paste -sd "|" "tmp."$SNa"_out5_TEreads")
 				col2=$(paste -sd "|" "tmp."$SNa"_out6_genereads")
-				echo $line | awk -v c1="$col1" -v c2="$col2" 'BEGIN{IFS=" " ; OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,"TE:"c1,"Gene:"c2}'
+				echo $line | awk -v c1="$col1" -v c2="$col2" 'BEGIN{IFS=" " ; OFS="\t"}{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,"TE:"c1,"Gene:"c2}'
 				rm -f "tmp."$SNa*
 		else
 			echo $line
