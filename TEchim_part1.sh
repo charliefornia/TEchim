@@ -165,8 +165,22 @@ create_fasta()
 	# is the ACTUAL nucleotide sequence of the mRNA molecule 
 	sed 's/ .*//' a_m12.1 > a_m12.2
 	# combine in-silico components
-	paste -d'\n' a_m12.1 b_m12.2 c_m12.1 d_m12.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta"
-	paste -d'\n' a_m12.1 b_m12.3 c_m12.1 d_m12.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
+	paste -d'\n' a_m12.1 b_m12.2 c_m12.1 d_m12.2 > $SNa"_S"$SNo"_L"$LNo$"_out3_1.fq"
+	paste -d'\n' a_m12.1 b_m12.3 c_m12.1 d_m12.3 > $SNa"_S"$SNo"_L"$LNo$"_out3_2.fq"
+	# trim poly-A tails and remove reads with low complexity (option -D)
+	fqtrim -D -p $nc -o prefilter.trimmed.fq $SNa"_S"$SNo"_L"$LNo$"_out3_1.fq",$SNa"_S"$SNo"_L"$LNo$"_out3_2.fq"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out3_1.fq"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out3_2.fq"
+	# remove read-pairs were at least one read is shorter than 10nt - these can not be reliably mapped to TE sequences
+	awk '{if(NR%4==2) if(length($0)<10) print NR"\n"NR-1"\n"NR+1"\n"NR+2}' $SNa"_S"$SNo"_L"$LNo$"_out3_1.prefilter.trimmed.fq" > $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete1"
+	awk '{if(NR%4==2) if(length($0)<10) print NR"\n"NR-1"\n"NR+1"\n"NR+2}' $SNa"_S"$SNo"_L"$LNo$"_out3_2.prefilter.trimmed.fq" >> $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete1"
+	sort -n $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete1" | uniq > $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete2"
+	awk 'NR==FNR{l[$0];next;} !(FNR in l)' $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete2" $SNa"_S"$SNo"_L"$LNo$"_out3_1.prefilter.trimmed.fq" > $SNa"_S"$SNo"_L"$LNo$"_out3_1.trimmed.fq"
+	awk 'NR==FNR{l[$0];next;} !(FNR in l)' $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete2" $SNa"_S"$SNo"_L"$LNo$"_out3_2.prefilter.trimmed.fq" > $SNa"_S"$SNo"_L"$LNo$"_out3_2.trimmed.fq"
+	rm $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete1"
+	rm $SNa"_S"$SNo"_L"$LNo$"tmp_lines_to_delete2"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out3_1.prefilter.trimmed.fq"
+	rm $SNa"_S"$SNo"_L"$LNo$"_out3_2.prefilter.trimmed.fq"
 	# create look-up table and remove "@" at the beginning of the readname
 	paste -d'\t' a_m12.2 b_m12.1 | sed 's/^@\(.*\)/\1/' > $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.tsv"
 	# create FASTA file from LOOKUP table
@@ -187,7 +201,7 @@ align_and_filter()
 	echo " --> start mapping at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	#### STREAM 1 ####
 	# run STAR in chimera-mode
-	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $1 $2 --chimSegmentMin 20 --chimOutType WithinBAM --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4_" --clip3pAdapterSeq AAAAAAAA
+	STAR --runThreadN $nc --genomeDir $REFpath"STAR_"$REFbase --readFilesIn $1 $2 --chimSegmentMin 20 --chimOutType WithinBAM --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $SNa"_S"$SNo"_L"$LNo$"_out4_"
 	mkdir $SNa"_S"$SNo"_L"$LNo"_STAR"
 	mv $SNa"_S"$SNo"_L"$LNo$"_out4"* $SNa"_S"$SNo"_L"$LNo"_STAR"/.
 	# extract only hits that cross TE-GENE breakpoints. the awk commands remove
@@ -202,14 +216,26 @@ align_and_filter()
 	# The output of this stream is based on the STAR alignment of in-silico paired-end reads.
 	# The hits will only be used for reads where the genome-section is successfully mapped with BLAST (further downstream), but the transposon section is NOT.
 	# Using the maximum fragment length, and information about whether the gene- and te- reads are mapped to the (+)ive or (-)ive strand (all contained in SAM-flag) are used for output information.
-	# Select pairs where both reads map to positive strand
-	samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
-	# Select pairs where read1 maps to positive, and read2 to negative
-	samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
-	# Select pairs where read1 maps to negative, and read2 to positive
-	samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
-	# Select pairs where both reads map to negative strand
-	samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	# Challenge: samflags assume that both reads will be the same strand - a properly paired read pair from the plus strand is: -f 97 F16
+	if [[ $stranded = "0" ]]; then
+		# Select pairs where both reads map to positive strand
+		samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|negative|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|negative|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where read1 maps to positive, and read2 to negative
+		samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|positive|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|positive|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where read1 maps to negative, and read2 to positive
+		samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|positive|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|positive|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where both reads map to negative strand
+		samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|negative|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|negative|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	else	
+		# Select pairs where both reads map to positive strand
+		samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where read1 maps to positive, and read2 to negative
+		samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where read1 maps to negative, and read2 to positive
+		samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		# Select pairs where both reads map to negative strand
+		samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|plus|GENE-TE|S"s"|L"l"|"$8,".","-",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|minus|TE-GENE|S"s"|L"l"|"$4,".","+",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+	fi
 	bedtools sort -i $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed" > $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed"
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 	rm $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.fa"
@@ -291,7 +317,7 @@ create_summary_table ()
 		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 			a = $11
 			gsub(/TEchr_/,"",a)
-			if ($8 == "plus") {if ($15=="plus") {b = "forward"} else {b = "reverse"}} else {if ($15 == "plus") { b = "reverse" } else { b = "forward" }}
+			if ($8 == "plus") {if ($15=="plus") {b = "positive"} else {b = "negative"}} else {if ($15 == "plus") { b = "negative" } else { b = "positive" }}
 			if ($3 < $9) {print $1"|"a"|"b"|GENE-TE|S"s"|L"l} else {print $1"|"a"|"b"|TE-GENE|S"s"|L"l}
 			}' < $1 > tmpfile.readname
 			awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "+"}}' < $1 > tmpfile.breakpoint.chr.strand
@@ -346,7 +372,7 @@ else
 	exit
 fi
 
-align_and_filter $SNa"_S"$SNo"_L"$LNo$"_out3_1.fasta" $SNa"_S"$SNo"_L"$LNo$"_out3_2.fasta"
+align_and_filter $SNa"_S"$SNo"_L"$LNo$"_out3_1.trimmed.fq" $SNa"_S"$SNo"_L"$LNo$"_out3_2.trimmed.fq"
 blast_on_longreads $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam" $SNa"_S"$SNo"_L"$LNo$"_LOOKUP.sorted.tsv.gz" &&\
 	rm $SNa"_S"$SNo"_L"$LNo$"_out5_STREAM1_TExGenes.sam"
 
