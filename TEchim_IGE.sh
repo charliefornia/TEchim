@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - IGE
-# VERSION: 0.2.2 (dev)
+# VERSION: 0.4.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 19/06/2019 (dd/mm/yyyy)
+# DATE: 18/03/2020 (dd/mm/yyyy)
 # DESCRIPTION: This script generates 10 IGE subsamples 
 ################################################################################
 
@@ -228,7 +228,7 @@ align_IGEref_and_filter()
 	echo " --> start mapping on IGE reference at ... $(date)" >> $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_"$logname".log"
 	#### STREAM 1 ####
 	# run STAR in chimera-mode
-	STAR --runThreadN $nc --genomeDir $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_CONTAINER/STAR_"$IGEgroup"_"$SNa"_IGEref" --readFilesIn $1 $2 --chimSegmentMin 20 --chimOutType WithinBAM --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4_"	--clip3pAdapterSeq AAAAAAAA
+	STAR --runThreadN $nc --genomeDir $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_IGEref_CONTAINER/STAR_"$IGEgroup"_"$SNa"_IGEref" --readFilesIn $1 $2 --chimSegmentMin 20 --chimOutType WithinBAM --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4_"
 	mkdir $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_STAR"
 	mv $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out4"* $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo"_STAR"/.
 	# extract only hits that cross IGE-GENE breakpoints. the awk commands remove IGE-IGE reads
@@ -328,15 +328,6 @@ create_summary_table ()
 	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $13 ; d = $12 ; if (a < b) {print d} else {print c}}' < $1 > tmpfile.breakpoint.TE
 	# determine the overlap between the two mapped sections of the long read
 	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $1 > tmpfile.uncertainty
-	if [[ $stranded = "0" ]]; then
-		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
-			a = $11
-			gsub(/TEchr_/,"",a)
-			if ($8 == "plus") {if ($15=="plus") {b = "forward"} else {b = "reverse"}} else {if ($15 == "plus") { b = "reverse" } else { b = "forward" }}
-			if ($3 < $9) {print $1"|"a"|"b"|GENE-TE|"s"|"l} else {print $1"|"a"|"b"|TE-GENE|"s"|"l}
-			}' < $1 > tmpfile.readname
-			awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "+"}}' < $1 > tmpfile.breakpoint.chr.strand
-	else
 	awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 		a = $11
 		gsub(/TEchr_/,"",a)
@@ -346,8 +337,7 @@ create_summary_table ()
 		e = $1
 		if (c < d) {print e"|"a"|"b"|GENE-TE|"s"|"l} else {print e"|"a"|"b"|TE-GENE|"s"|"l}
 		}' < $1 > tmpfile.readname
-		awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $1 > tmpfile.breakpoint.chr.strand
-	fi
+	awk 'BEGIN {OFS = "\t"} {a = $8 ; if (a == "plus") {print "+"} else {print "-"}}' < $1 > tmpfile.breakpoint.chr.strand
 	awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "."}}' < $1 > tmpfile.score
 	paste -d'|' tmpfile.readname tmpfile.breakpoint.TE tmpfile.uncertainty > tmpfile.readname.extended
 	paste -d'\t' tmpfile.chr tmpfile.breakpoint.chr.start tmpfile.breakpoint.chr.end tmpfile.readname.extended tmpfile.score tmpfile.breakpoint.chr.strand > $IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out11a_STREAM1_breakpoints.bed"
@@ -537,7 +527,7 @@ do
 		for LNo in $list_of_LNo
 		do
 			(if [[ ! -f $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.fa" ]]; then zcat < $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz" | awk '{print ">"$1"\n"$2}' > $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.fa"; fi
-			align_IGEref_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.fasta" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.fasta" 
+			align_IGEref_and_filter $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_1.trimmed.fq" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_out3_2.trimmed.fq" 
 			blast_on_longreads $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out5_STREAM1_TExGENES.sam" $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo$"_LOOKUP.sorted.tsv.gz"
 			create_summary_table $wd"/IGE_COLLECTION_"$SNa"/"$IGEgroup"_"$SNa"_"$SNo"_"$LNo"_IGE/"$IGEgroup"_"$SNa"_IGEref_"$SNo"_"$LNo$"_out10a_STREAM1_TExGENES_blastedreads.tsv") &
 		done
