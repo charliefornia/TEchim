@@ -220,13 +220,13 @@ align_and_filter()
 	# Challenge: samflags assume that both reads will be the same strand - a properly paired read pair from the plus strand is: -f 97 F16
 	if [[ $stranded = "0" ]]; then
 		# Select pairs where both reads map to positive strand
-		samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|negative|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|negative|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|negative|upstream|S"s"|L"l"|"$8,".",".",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|negative|upstream|S"s"|L"l"|"$4,".",".",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 		# Select pairs where read1 maps to positive, and read2 to negative
-		samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|positive|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|positive|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		samtools view -f 97 -F 16 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|positive|upstream|S"s"|L"l"|"$8,".",".",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|positive|downstream|S"s"|L"l"|"$4,".",".",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 		# Select pairs where read1 maps to negative, and read2 to positive
-		samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|positive|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|positive|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		samtools view -f 81 -F 32 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|positive|downstream|S"s"|L"l"|"$8,".",".",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|positive|upstream|S"s"|L"l"|"$4,".",".",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 		# Select pairs where both reads map to negative strand
-		samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|negative|GENE-TE|S"s"|L"l"|"$8,".","0",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|negative|TE-GENE|S"s"|L"l"|"$4,".","0",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
+		samtools view -f 113 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4-mfl,$4,$1"|"$7"|negative|downstream|S"s"|L"l"|"$8,".",".",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8-mfl,$8,$1"|"$3"|negative|downstream|S"s"|L"l"|"$4,".",".",$1}}' | sed 's/TEchr_//g' >> $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
 	else	
 		# Select pairs where both reads map to positive strand
 		samtools view -f 65 -F 48 $SNa"_S"$SNo"_L"$LNo"_STAR"/$SNa"_S"$SNo"_L"$LNo$"_out4_"Aligned.sortedByCoord.out.bam | awk -v s="$SNo" -v l="$LNo"  -v mfl="$MaxFragLength" 'BEGIN {OFS = "\t"} {if ($3 !~ "TEchr_" && $7 ~ "TEchr_") {print $3,$4,$4+mfl,$1"|"$7"|minus|GENE-TE|S"s"|L"l"|"$8,".","+",$1} else if ($3 ~ "TEchr_" && $7 !~ "TEchr_" && $7 != "=") {print $7,$8,$8+mfl,$1"|"$3"|plus|TE-GENE|S"s"|L"l"|"$4,".","-",$1}}' | sed 's/TEchr_//g' > $SNa"_S"$SNo"_L"$LNo$"_out5b_STREAM2_FORout10c.bed"
@@ -279,8 +279,17 @@ blast_on_longreads ()
 	# extract reads where NO TE was found - these are filtered (at least $fastalength/2 should NOT map to genome) and STREAM2 information is added
 	# remove reads where less than half the $fastalength is left unmapped when BLASTed to no_TE_genome	
 	grep noTEfound $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" | awk -v flength="$fastalength" '{if ($9-$4 > flength/2 || $3 > flength/2) {print $0} }' > $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv"
-	join -1 1 -2 7 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv") <(sort -k 7 $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed") | awk 'BEGIN {OFS = "\t"} {if ($8=="plus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","+",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","+",$3,$4,$9}} else if ($8=="minus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","-",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","-",$3,$4,$9}}}' | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
-	tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed" | awk -v flength="$fastalength" 'BEGIN {OFS="\t"} {if ($6 == "plus") {if ($7 == "TE-GENE") {testart=$10+flength; teend=$10+$13} else if ($7 == "GENE-TE") {testart=$10+flength+$14-$15; teend=$10}} else if ($6 == "minus") {if ($7 == "TE-GENE") {testart=$10+flength-$13; teend=$10} else if ($7 == "GENE-TE") {testart=$10+flength; teend=$10+$15-$14}} {print $1,$2,$3,$4"|"$5"|"$6"|"$7"|"$8"|"$9"|"testart"-"teend"|0",$11,$12}}' > $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
+	if [[ $stranded = "0" ]]; then
+		# work out where exact chromosome breakpoint is fro STREAM2
+		join -1 1 -2 7 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv") <(sort -k 7 $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed") | awk 'BEGIN {OFS = "\t"} {if ($8=="plus") {if (($9-$4)<$3) {print $5,$6-1,$6,$14,".","+",$3,$4,$9} else if (($9-$4)>$3) {print $5,$7-1,$7,$14,".","+",$3,$4,$9}} else if ($8=="minus") {if (($9-$4)<$3) {print $5,$6-1,$6,$14,".","-",$3,$4,$9} else if (($9-$4)>$3) {print $5,$7-1,$7,$14,".","-",$3,$4,$9}}}' | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
+		# work out range for te breakpoint from STREAM2
+		tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed" | awk -v flength="$fastalength" 'BEGIN {OFS="\t"} {if ($6 == "positive") {if (($15-$14)<3) {if ($12 == "+") {testart=$10+flength; teend=$10+$13; } else if ($12 == "-") {testart=$10+flength-$13; teend=$10; }} else if (($15-$14)>3) {if ($12 == "+") {testart=$10-$15+$14+flength; teend=$10} else if ($12 == "-") {testart=$10+flength; teend=$10+$15-$14}}} else if ($6 == "negative") {if (($15-$14)<3) {if ($12 == "+") {testart=$10+flength-$13; teend=$10} else if ($12 == "-") {testart=$10+flength; teend=$10+$13}} else if (($15-$14)>3) {if ($12 == "+") {testart=$10+flength; teend=$10+$15-$14} else if ($12 == "-") {testart=$10-$15+$14+flength; teend=$10}}} ; {print $1,$2,$3,$4"|"$5"|"$6"|"$7"|"$8"|"$9"|"testart"-"teend"|0",".","."}}' > $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
+	else
+		# work out where exact chromosome breakpoint is from STREAM2
+		join -1 1 -2 7 <(sort $SNa"_S"$SNo"_L"$LNo$"_out9b_fromSTREAM1forSTREAM2_TExGENES_findTE.tsv") <(sort -k 7 $SNa"_S"$SNo"_L"$LNo$"_out10b_STREAM2_additional_chimera.bed") | awk 'BEGIN {OFS = "\t"} {if ($8=="plus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","+",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","+",$3,$4,$9}} else if ($8=="minus") {if ($14 ~ "[\|]TE-GENE[\|]") {print $5,$6-1,$6,$14,".","-",$3,$4,$9} else if ($14 ~ "[\|]GENE-TE[\|]") {print $5,$7-1,$7,$14,".","-",$3,$4,$9}}}' | bedtools sort -i - > $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed"
+		# work out range for te breakpoint from STREAM2
+		tr "|" "\t" < $SNa"_S"$SNo"_L"$LNo$"_out11b_STREAM2_additional_chimera.filtered.bed" | awk -v flength="$fastalength" 'BEGIN {OFS="\t"} {if ($6 == "plus") {if ($7 == "TE-GENE") {testart=$10+flength; teend=$10+$13} else if ($7 == "GENE-TE") {testart=$10+flength+$14-$15; teend=$10}} else if ($6 == "minus") {if ($7 == "TE-GENE") {testart=$10-$13; teend=$10} else if ($7 == "GENE-TE") {testart=$10+flength; teend=$10+$15-$14}} {print $1,$2,$3,$4"|"$5"|"$6"|"$7"|"$8"|"$9"|"testart"-"teend"|0",$11,$12}}' > $SNa"_S"$SNo"_L"$LNo$"_out11b1_STREAM2_additional_chimera.filtered.bed"
+	fi
 	echo " ------ BLAST results:" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out7_TExGENES_longreads.tsv" | awk '{print $1}') input reads" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
 	echo " ------ $(wc -l $SNa"_S"$SNo"_L"$LNo$"_out9_TExGENES_blastedreads_plusTEnohits.tsv" | awk '{print $1}') reads with a genome location" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
@@ -299,11 +308,6 @@ blast_on_longreads ()
 create_summary_table ()
 {
 	echo " --> start creating summary table at ... $(date)" >> $SNa"_S"$SNo"_L"$LNo"_PART1_"$logname".log"
-	# determine whether the section that maps to the genome is the 5' or the 3' end
-	# of the mRNA section:
-	# 5'-######|GENE|TE|######-3' => PART5
-	# 5'-######|TE|GENE|######-3' => PART3
-	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; if (a < b) {print "PART5"} else {print "PART3"}}' < $1 > tmpfile.genepart
 	# determine the precise breakpoint on the chromosome. this depends on  whether
 	# the chromosomal part is PART5 or PART3. BLAST places the read that matches $3 to $6, regardless of the orientation.
 	awk 'BEGIN {OFS = "\t"} {a = $5; {print a}}' < $1 > tmpfile.chr
@@ -315,13 +319,8 @@ create_summary_table ()
 	# determine the overlap between the two mapped sections of the long read
 	awk 'BEGIN {OFS = "\t"} {a = $3 ; b = $9 ; c = $4 ; d = $10 ; if (a < b) {print b-c-1} else {print a-d-1}}' < $1 > tmpfile.uncertainty
 	if [[ $stranded = "0" ]]; then
-		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
-			a = $11
-			gsub(/TEchr_/,"",a)
-			if ($8 == "plus") {if ($15=="plus") {b = "positive"} else {b = "negative"}} else {if ($15 == "plus") { b = "negative" } else { b = "positive" }}
-			if ($3 < $9) {print $1"|"a"|"b"|GENE-TE|S"s"|L"l} else {print $1"|"a"|"b"|TE-GENE|S"s"|L"l}
-			}' < $1 > tmpfile.readname
-			awk 'BEGIN {OFS = "\t"} {a = $1 ; {print "+"}}' < $1 > tmpfile.breakpoint.chr.strand
+		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {a = $11 ; gsub(/TEchr_/,"",a) ; if ($8 == "plus") {if ($15=="plus") {teori = "positive"} else if ($15=="minus") {teori = "negative"} ; if ($3 < $9) {frag = "upstream"} else if ($3 > $9) {frag = "downstream"} else {frag = "unclear"}} else if ($8 == "minus") {if ($15=="plus") {teori = "negative"} else if ($15=="minus") {teori = "positive"} ; if ($3 < $9) {frag = "downstream"} else if ($3 > $9) {frag = "upstream"} else {frag = "unclear"}} ; {print $1"|"a"|"teori"|"frag"|S"s"|L"l}}' < $1 > tmpfile.readname
+		awk 'BEGIN {OFS = "\t"} {print "."}' < $1 > tmpfile.breakpoint.chr.strand
 	else
 		awk -v s="$SNo" -v l="$LNo" 'BEGIN {OFS = "\t"} {
 		a = $11
