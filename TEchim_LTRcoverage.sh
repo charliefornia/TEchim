@@ -127,10 +127,10 @@ do
 		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_C.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_C.sam"
 		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_D.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_D.sam"
 		
-		echo -n $(grep $line "tmp."$SNa".LTRTEs."$SNo".COLLECT_A.sam" | wc -l)"|" >> "tmp."$SNa".output.collect.A.txt"
-		echo -n $(grep $line "tmp."$SNa".LTRTEs."$SNo".COLLECT_B.sam" | wc -l)"|" >> "tmp."$SNa".output.collect.B.txt"
-		echo -n $(grep $line "tmp."$SNa".LTRTEs."$SNo".COLLECT_C.sam" | wc -l)"|" >> "tmp."$SNa".output.collect.C.txt"
-		echo -n $(grep $line "tmp."$SNa".LTRTEs."$SNo".COLLECT_D.sam" | wc -l)"|" >> "tmp."$SNa".output.collect.D.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_A.sam" >> "tmp."$SNa".output.collect.A.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_B.sam" >> "tmp."$SNa".output.collect.B.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_C.sam" >> "tmp."$SNa".output.collect.C.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_D.sam" >> "tmp."$SNa".output.collect.D.txt"
 	done
 	echo $line$'\t'$(head -n1 "tmp."$SNa".output.collect.A.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.B.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.C.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.D.txt")
 	rm -f "tmp."$SNa".LTRTEs."*
