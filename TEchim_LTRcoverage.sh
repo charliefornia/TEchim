@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - quantify chimeras using LTR-spanning reads
-# VERSION: 0.2.0 (dev)
+# VERSION: 0.3.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 13/06/2019 (dd/mm/yyyy)
+# DATE: 09/04/2020 (dd/mm/yyyy)
 # DESCRIPTION: This tool measures the difference between LTR-TE vs. LTR-gene
 # breakpoint-spanning contigs
 ################################################################################
@@ -64,8 +64,8 @@ else
 	exit
 fi
 
-# create list of all LTR TEs
-if [[ -f $REFpath$TElist".list_of_LTR_TE_names.txt" ]]; then :; else awk '{if ($2 == "LTR" && $1 !~ "_LTR") {gsub(/>/,""); print $1}}' $REFpath$TElist > $REFpath$TElist".list_of_LTR_TE_names.txt"; fi
+# create list of all LTR TEs (the sed command removes "_I" from some TE names - this is so the TE-base name matches the name of its LTR)
+awk '{if ($2 == "LTR" && $1 !~ "_LTR") {gsub(/>/,""); print $1}}' $REFpath$TElist | sed -e 's/\(_I\)*$//g' > $TElist".list_of_LTR_TE_names.txt"
 
 ####################################################
 
@@ -75,31 +75,66 @@ do
 	list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
 	for LNo in $list_of_LNo
 	do
-		if [[ -f "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam" ]]; then :; else samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($3 ~ "TEchr_" && $7 != "=") print $0}' > "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam"; fi
+		# extract BAM header
+		samtools view -H $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" > "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam"
+		samtools view -H $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" > "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam"
+		
+		# extract reads where FIRST read maps to LTR region
+		samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($3 ~ "TEchr_" && $3 ~ "_LTR" && $7 != "=") print $0}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam"
+		# extract reads where SECOND read maps to LTR region
+		samtools view $path_to_PART1_output$SNa"_"$SNo"_"$LNo"/"$SNa"_"$SNo"_"$LNo"_STAR/"$SNa"_"$SNo"_"$LNo"_out4_Aligned.sortedByCoord.out.bam" | awk '{if ($7 ~ "TEchr_" && $7 ~ "_LTR") print $0}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam"
+			
+		# Select pairs where both reads map to positive strand
+		samtools view -f 65 -F 48 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($7 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_B.sam"
+		samtools view -f 65 -F 48 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($3 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_A.sam"
+		
+		# Select pairs where read1 maps to positive, and read2 to negative
+		samtools view -f 97 -F 16 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($7 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_B.sam"
+		samtools view -f 97 -F 16 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($3 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_A.sam"
+		samtools view -f 97 -F 16 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($3 == $7"_LTR" ) {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_D.sam"
+		samtools view -f 97 -F 16 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($7 == $3"_LTR" ) {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_C.sam"
+		
+		# Select pairs where read1 maps to negative, and read2 to positive
+		samtools view -f 81 -F 32 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($7 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_A.sam"
+		samtools view -f 81 -F 32 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($3 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_B.sam"
+		samtools view -f 81 -F 32 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($3 == $7"_LTR" ) {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_C.sam"
+		samtools view -f 81 -F 32 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($7 == $3"_LTR" ) {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_D.sam"		
+		
+		# Select pairs where both reads map to negative strand
+		samtools view -f 113 "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam" | awk '{if ($7 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_A.sam"
+		samtools view -f 113 "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam" | awk '{if ($3 !~ "TEchr_") {print $0}}' >> "tmp."$SNa".LTRinput."$SNo"_"$LNo".COLLECT_B.sam"
+		
+		rm "tmp."$SNa".LTRinput."$SNo"_"$LNo".FIRSTREADISLTR.sam"
+		rm "tmp."$SNa".LTRinput."$SNo"_"$LNo".SECONDREADISLTR.sam"
+	
 	done		
 done
 
-# write header
-echo TE$'\t'LTR-gene$'\t'LTR-TE > $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
+wait
 
+# write header
+echo TE$'\t'GENE-LTR$'\t'LTR-GENE$'\t'TE-LTR$'\t'LTR-TE > $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
+
+rm -f "tmp."$SNa".output.collect."*".txt"
+	
 while read line
-do
-	rm -f "tmp.output.collect_"$line
+do		
 	list_of_SNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2}' | awk '!seen[$0]++ {print $0}' | rev)
 	for SNo in $list_of_SNo
 	do
-		rm -f "tmp.output."$SNo
-		list_of_LNo=$(find $path_to_PART1_output -maxdepth 1 -name "$SNa"_S"*" | rev | cut -d "/" -f 1 | awk '{gsub(/_/,"\t"); print $2"\t"$1}' | rev | grep $SNo | awk '{print $1}')
-		for LNo in $list_of_LNo
-		do
-			awk -v te="$line" '{if ($3 == "TEchr_"te"_LTR" && $7 == "TEchr_"te) counta++; else if ($3 == "TEchr_"te"_LTR" && $7 != "TEchr_"te && $7 != "=") countb++} END {print countb"\t"counta}' "tmp."$SNa".LTRinput."$SNo"_"$LNo".sam" >> "tmp.output."$SNo
-		done
-		awk '{suma+=$1; sumb+=$2;} END {print suma"\t"sumb;}' "tmp.output."$SNo >> "tmp.output.collect_"$line
-		rm -f "tmp.output."$SNo		
+		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_A.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_A.sam"
+		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_B.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_B.sam"
+		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_C.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_C.sam"
+		cat "tmp."$SNa".LTRinput."$SNo"_"*".COLLECT_D.sam" > "tmp."$SNa".LTRTEs."$SNo".COLLECT_D.sam"
+		
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_A.sam" >> "tmp."$SNa".output.collect.A.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_B.sam" >> "tmp."$SNa".output.collect.B.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_C.sam" >> "tmp."$SNa".output.collect.C.txt"
+		awk -v te=$line '{if ($3 ~ te || $7 ~ te) count++1} END {printf count"|"}' "tmp."$SNa".LTRTEs."$SNo".COLLECT_D.sam" >> "tmp."$SNa".output.collect.D.txt"
 	done
-	a=$(cat "tmp.output.collect_"$line | awk '{print $1}' | paste -sd "|" -)
-	b=$(cat "tmp.output.collect_"$line | awk '{print $2}' | paste -sd "|" -)
-	echo $line $a $b
-	rm -f "tmp.output.collect_"$line
-done < $REFpath$TElist".list_of_LTR_TE_names.txt" >> $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
+	echo $line$'\t'$(head -n1 "tmp."$SNa".output.collect.A.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.B.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.C.txt")$'\t'$(head -n1 "tmp."$SNa".output.collect.D.txt")
+	rm -f "tmp."$SNa".LTRTEs."*
+	rm -f "tmp."$SNa".output.collect."*".txt"	
+done < $TElist".list_of_LTR_TE_names.txt" >> $SNa".LTR_TEs.proportion_of_TEvsGENE.tsv"
+
 rm "tmp."$SNa".LTRinput."*
