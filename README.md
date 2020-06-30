@@ -12,7 +12,9 @@ TEchim is an analysis pipeline with 6 key functions:
 ------------------------------------------------------------------------
 
 TEchim – function 2/3
+
 part 1 – on every sample/lane separately
+
 1.) merge reads
 If 2 fastq files exist, then these reads are merged using FLASH. The command for this step is:
 flash original_1.fastq original_2.fastq -z [compresses the output file] -x 0.15 [maximum allowed ratio between the number of mismatched base pairs and the overlap length] -M 170 [maximum overlap] -o sample_out1 -t number_of_cores -q [quiet]
