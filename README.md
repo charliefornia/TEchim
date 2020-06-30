@@ -11,7 +11,7 @@ TEchim is an analysis pipeline with 6 key functions:
 
 ------------------------------------------------------------------------
 
-TEchim – function 2/3
+# TEchim – function 2/3
 
 part 1 – on every sample/lane separately
 
@@ -112,7 +112,7 @@ Two values are then calculated for every sequencing lane and sample. One is the 
 All these steps are strand-sensitive, and only count reads that match the according strand of the gene.
 
 
-TEchim function 4 - IGE control analysis
+# TEchim function 4 - IGE control analysis
 
 1.) split_CDS
 
