@@ -148,12 +148,12 @@ create_fasta()
 		cat a_m1.2 a_2.2 > a_m12.1
 		cat b_m1.2 b_2.2 > b_m12.1
 		cat c_m1.2 c_2.2 > c_m12.1
-		cat b_m1.2 d_2.2 > d_m12.1
+		cat d_m1.2 d_2.2 > d_m12.1
 	else
 		cat a_m1.2 > a_m12.1
 		cat b_m1.2 > b_m12.1
 		cat c_m1.2 > c_m12.1
-		cat b_m1.2 > d_m12.1	
+		cat d_m1.2 > d_m12.1	
 	fi
 	# crop sequences and quality scores to $fastalength - for out3_1.fasta
 	sed -E "s/(.{$fastalength}).*/\1/" b_m12.1 > b_m12.2
