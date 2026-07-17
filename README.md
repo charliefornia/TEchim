@@ -11,6 +11,49 @@ TEchim is an analysis pipeline with 6 key functions:
 
 ------------------------------------------------------------------------
 
+## Requirements
+
+TEchim is a collection of Bash/awk pipelines written for a **Linux** command-line
+environment. All PART1/PART2 scripts contain `#SBATCH` directives and are meant
+to be submitted to a **SLURM**-managed HPC cluster with `sbatch` (PART1 is
+typically submitted as a job array, one task per sample/lane). They are not
+intended to be run on macOS/Windows or without a scheduler, and the `module
+load ...` lines will need to be adjusted to match the module names available
+on your own cluster.
+
+Depending on which script you run, you will need the following tools
+available on your `$PATH` (or loadable as modules):
+
+- [STAR](https://github.com/alexdobin/STAR)
+- [FLASH](https://ccb.jhu.edu/software/FLASH/)
+- [fqtrim](https://ccb.jhu.edu/software/fqtrim/)
+- [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi)
+- [samtools](http://www.htslib.org/)
+- [bedtools](https://bedtools.readthedocs.io/)
+- [RepeatMasker](https://www.repeatmasker.org/) (build step only)
+- [GNU parallel](https://www.gnu.org/software/parallel/)
+
+## Scripts in this repository
+
+| Script | Function |
+| --- | --- |
+| `TEchim_buildREF.sh` | (1) Builds the reference support files (masked genome, TE FASTA/BLAST databases, STAR index, gene/feature/splice-site BED files) that all other scripts depend on. Run once per reference genome. |
+| `TEChim_PART1_forSLURM.sh` | (2)/(3) Per-sample/lane: merges reads, generates in-silico reads, maps them, and BLASTs candidates to find TE-gene breakpoints. Used for both gDNA and cDNA/mRNA input (set the `stranded` parameter accordingly). |
+| `TEChim_PART2_forSLURM.sh` | (3) Combines PART1 output across samples/lanes for **cDNA/mRNA** data: tags breakpoints with genes, merges hits per TE, checks breakpoints against splice donor/acceptor sites, and adds per-sample splice-ratio (expression) information. |
+| `TEChim_PART2_gDNA_forSLURM.sh` | (2) Combines PART1 output across samples/lanes for **gDNA** data. Same core logic as the cDNA/mRNA PART2, but skips the splice-site and splice-ratio steps, which don't apply to genomic DNA (no splicing). Breakpoints are still annotated against gene features (exon/intron/UTR/CDS). |
+| `TEchim_postproc_filterPart2Output_v0.1.sh` | Post-processing: filters PART2 output down to gene–TE pairs supported by a minimum number of total reads. |
+| `TEchim_postproc_SumUpnonTEsplicerate_v0.1.sh` | Post-processing: sums the per-sample splice-ratio counts from cDNA/mRNA PART2 output into a single total. |
+| `TEchim_IGE.sh` | (4) Immobile genetic element (IGE) analysis. |
+| `TEchim_LTR-TE_vs_LTR-gene.sh` | (5) Quantification of LTR-gene spanning reads. |
+| `TEchim_TEcoverage_vs_TEgeneREADS.sh` | (6) Quantification of locus-specific breakpoint-spanning reads. |
+| `TEchim_part2_scSEQ.sh` / `TEchim_scSEQ_addtags.sh` | Single-cell sequencing variant of PART2. |
+
+Each script's own header comment documents its `VERSION`, expected inputs, and
+parameters that need to be set before running it (working directory,
+reference path, experiment name, etc.).
+
+------------------------------------------------------------------------
+
 # TEchim – function 2/3
 
 part 1 – on every sample/lane separately
@@ -56,6 +99,14 @@ The final output file contains a line for every sequencing reads that spans a tr
 Part1 is run on every lane and sample.
 
 Part 2 – combine samples/lanes
+
+Part 2 comes in two flavours: `TEChim_PART2_forSLURM.sh` for cDNA/mRNA data,
+and `TEChim_PART2_gDNA_forSLURM.sh` for gDNA data. Steps 1, 2 and 4 below are
+shared by both. Steps 3 (splice-site check) and 5 (splice-ratio/expression
+quantification) are cDNA/mRNA-only, since genomic DNA is not spliced; the
+gDNA script instead just annotates breakpoints against gene features
+(exon/intron/UTR/CDS) and stops there.
+
 1.) process_P1out_TE
 First, all existing output files from part1 in the destination folder are combined (concatenated). The bedfile is intersected with all annotated “GENES” in the reference genome, and a gene tag is added to each read (or -1, if the genomic section of the read does not overlap with an annotated gene).
 
@@ -92,16 +143,24 @@ Gene|Chr|Strand(genome)|Breakpoint(genome)|TE|TE-GENE or GENE-TE|orientation (te
 
 After all TEs are looped through, the empty lines are removed.
 
-3.) check_for_TE_splicesites
+3.) check_for_TE_splicesites *(cDNA/mRNA only)*
 
 Next, every line in output file is checked for proximity to a splice site of the according gene. First, the line is converted to bedfile format. Then, this bedfile is intersected with $REFpath$REFbase”_FEATURES.bed”, which contains all features of every gene (e.g. intron, UTR, exon, etc.). The entire list of overlapping features is appended to each line.
 After this, TEchim checks whether the breakpoint overlaps with a splice junction of the host gene. For TE-GENE fragments, splice acceptor sites are overlapped, and for GENE-TE fragments, splice donor sites are taken.
 Finally, all fields are pasted into a tab-separated output file.
 
+For gDNA data, `TEChim_PART2_gDNA_forSLURM.sh` runs the equivalent
+`check_for_TE_features` step: it still intersects each breakpoint with
+`_FEATURES.bed` and appends the overlapping features, but it does not check
+for splice donor/acceptor proximity (there is no splicing at the DNA level).
+The splice-site column is filled with `N/A` instead, so output from both
+scripts keeps the same column layout and works with the same postproc
+scripts.
+
 4.) split_TE_breakpoints
 This step splits and pools the TE breakpoints for each line.
 
-5.) add_expression_levels
+5.) add_expression_levels *(cDNA/mRNA only)*
 The last segment quantifies the number of transcripts with- and without transposon insertions. This analysis depends on whether TE-GENE, or GENE-TE fragments were detected. First, 
 
 
@@ -110,6 +169,9 @@ For TE-GENE fragments, region A stretches from the start of the gene up until th
 For GENE-TE fragments, region A stretches from the breakpoint up until the end of the gene and region B ends at the breakpoint and extends upstream of the gene for the maximum fragment length.
 Two values are then calculated for every sequencing lane and sample. One is the number of properly paired reads where one mate maps onto region B, and the other mate onto the inserted transposon. And the other value is the number of properly paired reads where one mate maps onto region B, and the other mate onto region A.
 All these steps are strand-sensitive, and only count reads that match the according strand of the gene.
+
+This step does not apply to gDNA data (no splicing means no splice-ratio to
+quantify), so `TEChim_PART2_gDNA_forSLURM.sh` stops after step 4.
 
 
 # TEchim function 4
@@ -131,4 +193,3 @@ Based on the average expression levels of all transposons, 10 sets of IGEs with 
 10 new reference genomes are created, where each set of IGEs is first removed, and then added as separate chromosomes (named IGE_...), analogous to transposons in the original reference genome adaptations.
 
 The next steps are performed identical to the analysis of Transposons, for each of the 10 IGE sets.
-

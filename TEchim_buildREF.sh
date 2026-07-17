@@ -2,9 +2,9 @@
 
 ################################################################################
 # TITLE: TEchim - build genomes
-# VERSION: 0.2.0 (dev)
+# VERSION: 0.3.0 (dev)
 # AUTHOR: Christoph Treiber, Waddell lab, University of Oxford
-# DATE: 12/06/2019 (dd/mm/yyyy)
+# DATE: 24/03/2025 (dd/mm/yyyy)
 # DESCRIPTION: Run this once to create necesseary support files
 ################################################################################
 
@@ -16,10 +16,15 @@
 # - blast (https://blast.ncbi.nlm.nih.gov/Blast.cgi)
 ################################################################################
 
+module load bedtools
+module load repeatmasker
+module load rna-star
+module load blast
+
 ################################################################################
 ################################################################################
 REFpath=/PATH/TO/REF/
-REFbase=dmel625
+REFbase=your_reference_basename
 TElist=TEs.fa
 nc=10
 # REFpath directory must contain:
@@ -45,7 +50,7 @@ awk '{print "TEchr_"$2"\t0\t"$1"\tNEG_"$2"\t.\t-"}' tmp.TEcomb >> $TElist".bed"
 rm tmp.TE*
 
 # use repeatmasker to mask any sequence in the reference genome that looks like a transposon
-RepeatMasker -lib $TElist -no_is -nolow -s -pa $nc $REFbase".fa" 
+RepeatMasker -lib $TElist -no_is -nolow -s -pa $nc $REFbase".fa"
 rm $REFbase".fa.cat.gz"
 rm $REFbase".fa.ori.out"
 rm $REFbase".fa.out"
@@ -141,6 +146,5 @@ cat $REFbase".gtf" | awk -v TEmin="$tmp_TEmin" 'BEGIN{OFS="\t"}{if ($3 == "CDS" 
 bedtools getfasta -fi $REFbase.fa -bed "tmp."$REFbase".filtered_CDS.tsv" -name > "tmp."$REFbase".filtered_CDS.fasta"
 makeblastdb -dbtype nucl -in $REFbase".fa"
 blastn -query "tmp."$REFbase".filtered_CDS.fasta" -outfmt "10 qseqid" -db $REFbase".fa" | uniq -u > "tmp."$REFbase".use_these_CDS.tsv"
-awk 'BEGIN{FS="@"; OFS="\t"} {print $2,$3,$4,$1"@"$2"-"$3":"$4,".",$5}' tmp.dmel625.use_these_CDS.tsv | grep -v mito > $REFbase".CDS_for_IGE.bed"
+awk 'BEGIN{FS="@"; OFS="\t"} {print $2,$3,$4,$1"@"$2"-"$3":"$4,".",$5}' "tmp."$REFbase".use_these_CDS.tsv" | grep -v mito > $REFbase".CDS_for_IGE.bed"
 rm "tmp."$REFbase*
-
