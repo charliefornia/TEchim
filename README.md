@@ -8,6 +8,7 @@ TEchim is an analysis pipeline with 6 key functions:
 4. Generation of immobile genetic element (IGE) analysis
 5. Quantification of LTR-gene spanning reads
 6. Quantification of locus-specific breakpoint-spanning reads
+    (See https://doi.org/10.7554/eLife.110625.2)
 
 ------------------------------------------------------------------------
 
